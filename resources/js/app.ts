@@ -1,4 +1,5 @@
 import './bootstrap';
+import './echo.js';
 import '../css/app.css';
 
 import { createApp, h, DefineComponent } from 'vue';

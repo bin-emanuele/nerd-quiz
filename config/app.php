@@ -123,4 +123,18 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Game Rules
+    |--------------------------------------------------------------------------
+    |
+    | Here you may define the rules for the game.
+    |
+    */
+
+    'game' => [
+        'default_max_partecipants' => 25,
+        'answers_available' => 1,
+    ],
+
 ];

@@ -20,9 +20,6 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->smallInteger('max_partecipants')->default(25);
 
-            $table->json('questions')->nullable();
-            $table->json('partecipants')->nullable();
-
             // TODO: Manage status with a state machine
             $table->enum('status', [
                 'waiting-partecipants',

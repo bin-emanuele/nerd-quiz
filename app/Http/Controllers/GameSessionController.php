@@ -16,7 +16,7 @@ class GameSessionController extends Controller
     public function index()
     {
         return Inertia::render('GameSessions/Index', [
-            'game_sessions' => GameSession::all(),
+            'game_sessions' => GameSession::with('partecipants')->get(),
             'create_url'    => route('game-sessions.index'),
         ]);
     }
@@ -50,7 +50,7 @@ class GameSessionController extends Controller
     public function show(GameSession $game_session)
     {
         return Inertia::render('GameSessions/Show', [
-            'game_session' => $game_session,
+            'game_session' => $game_session->load('partecipants'),
         ]);
     }
 
