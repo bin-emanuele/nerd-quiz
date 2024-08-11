@@ -31,7 +31,8 @@ class FrontGameSessionController extends Controller
         $game_session = GameSession::with('partecipants')->where('slug', $slug)->firstOrFail();
 
         return Inertia::render('GameSessions/Front', [
-            'game_session' => $game_session,
+            'game_session'        => $game_session,
+            'winningAnswersCount' => config('app.game.winning_answers_count'),
         ]);
     }
 
