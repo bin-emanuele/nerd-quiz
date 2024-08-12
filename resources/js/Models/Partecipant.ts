@@ -2,6 +2,7 @@ import { GameSession } from "./GameSession";
 
 export class Partecipant {
   id: number;
+  type: 'host' | 'partecipant';
   name: string;
   game_session_slug: string;
   game_session_id: number;
@@ -14,6 +15,7 @@ export class Partecipant {
 
   constructor(data: Partial<Partecipant> = {}) {
     this.id = data.id || 0;
+    this.type = data.type || 'partecipant';
     this.name = data.name || '';
     this.game_session_slug = data.game_session_slug || '';
     this.game_session_id = data.game_session_id || 0;

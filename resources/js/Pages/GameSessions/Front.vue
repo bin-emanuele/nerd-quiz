@@ -59,28 +59,39 @@ onMounted(() => {
   }
 });
 
+
 function connect () {
   Echo.join(`game-session.${game_session.slug}`)
     .here((partecipants) => {
       console.log('Partecipants here', partecipants);
-      partecipants.forEach((partecipant) => {
-        if (!game_session.partecipants.some((p) => p.id === partecipant.id)) {
-          game_session.partecipants.push(partecipant);
-        }
-      });
+      partecipants
+        .filter(x => x.type === 'partecipant')
+        .forEach((partecipant) => {
+          if (!game_session.partecipants.some((p) => p.id === partecipant.id)) {
+            game_session.partecipants.push(partecipant);
+          }
+        });
       online_partecipants.splice(0, online_partecipants.length, ...partecipants.map((p) => p.id));
     })
     .joining((partecipant) => {
       console.log('Partecipant joined', partecipant);
-
-      if (online_partecipants.includes(partecipant.id)) {
+      if (partecipant.type !== 'partecipant') {
         return;
       }
 
       online_partecipants.push(partecipant.id);
+
+      if (game_session.partecipants.map(x => x.id).includes(partecipant.id)) {
+        return;
+      }
+
       game_session.partecipants.push(partecipant);
     })
     .leaving((partecipant) => {
+      if (partecipant.type !== 'partecipant') {
+        return;
+      }
+
       console.log('Partecipant left', partecipant);
       online_partecipants.splice(online_partecipants.indexOf(partecipant.id), 1);
     })
