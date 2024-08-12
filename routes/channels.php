@@ -14,5 +14,5 @@ Broadcast::channel('game-session.{slug}', function (Partecipant $partecipant, st
 
     Log::info('User ' . $partecipant->id . ' is authorized to join channel game-session.' . $slug);
 
-    return ['id' => $partecipant->id, 'name' => $partecipant->name];
+    return $partecipant;
 }, ['guards' => ['partecipant']]);

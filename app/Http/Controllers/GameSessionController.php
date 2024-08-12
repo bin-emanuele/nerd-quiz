@@ -50,7 +50,8 @@ class GameSessionController extends Controller
     public function show(GameSession $game_session)
     {
         return Inertia::render('GameSessions/Show', [
-            'game_session' => $game_session->load('partecipants'),
+            'game_session'          => $game_session->load('partecipants'),
+            'winning_answers_count' => config('app.game.winning_answers_count'),
         ]);
     }
 

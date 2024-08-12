@@ -1,31 +1,33 @@
-<script setup>
+<script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3'
 import Modal from '@/Components/Modal.vue'
 import Alert from '@/Components/Alert.vue'
 import StatusBadge from '@/Components/GameSession/StatusBadge.vue'
+import GameSessionPartecipants from '@/Components/GameSession/Partecipants.vue';
 import GuestLayout from '@/Layouts/GuestLayout.vue';
 import { ref, reactive, computed } from 'vue';
 import axios from 'axios';
-import { onMounted } from 'vue';
+import { onMounted } from 'vue'
+import { GameSession } from '@/Models/GameSession';
 
-const { game_session, auth, winningAnswersCount } = defineProps({
+const { game_session, auth, winning_answers_count, partecipant } = defineProps({
   auth: {
     type: Object,
   },
   game_session: {
-    type: Object,
+    type: Object as PropType<GameSession>,
     required: true,
   },
-  winningAnswersCount: {
+  winning_answers_count: {
     type: Number,
     required: true,
   },
+  partecipant: {
+    type: Object as PropType<Partecipant>,
+  },
 });
 
-
-// TODO: This will be optained from the websocket connection
 const game_status = 'waiting-partecipants';
-const partecipants = reactive([...game_session.partecipants || []]);
 const online_partecipants = reactive([]);
 
 function getRandomAmazingName () {
@@ -35,50 +37,19 @@ function getRandomAmazingName () {
   return `${adjectives[Math.floor(Math.random() * adjectives.length)]} ${names[Math.floor(Math.random() * names.length)]}`;
 }
 
-const isConnected = computed(() => (partecipant) => {
-  return online_partecipants.includes(partecipant.id);
-});
-
 const name = ref(getRandomAmazingName());
-const partecipant = reactive({})
 const joinModalErrors = ref({});
 const joinModalShow = ref(!auth.user);
-
-const sortedPartecipants = computed(() => {
-  return partecipants.sort((a, b) => {
-    if (isConnected.value(a) && !isConnected.value(b)) {
-      return -1;
-    }
-
-    if (!isConnected.value(a) && isConnected.value(b)) {
-      return 1;
-    }
-
-    if (b.answers_available !== a.answers_available) {
-      return b.answers_available - a.answers_available;
-    }
-
-    return b.answers_correct - a.answers_correct;
-  });
-});
-
-const maxAnswersAvailable = computed(() => {
-  return Math.max(...partecipants.map(p => p.answers_available));
-});
 
 function onPartecipantJoin () {
   router.post(`/game/${game_session.slug}/join`, { name: name.value }, {
     onSuccess: (response) => {
       joinModalShow.value = false;
-      partecipant.value = response.data;
-      partecipants.push(partecipant.value);
-      online_partecipants.push(partecipant.value.id);
-
       connect();
     },
     onError: (errors) => {
       joinModalErrors.value = errors;
-    }
+    },
   })
 }
 
@@ -91,7 +62,13 @@ onMounted(() => {
 function connect () {
   Echo.join(`game-session.${game_session.slug}`)
     .here((partecipants) => {
-      online_partecipants.splice(0, online_partecipants.length, ...partecipants.map(p => p.id));
+      console.log('Partecipants here', partecipants);
+      partecipants.forEach((partecipant) => {
+        if (!game_session.partecipants.some((p) => p.id === partecipant.id)) {
+          game_session.partecipants.push(partecipant);
+        }
+      });
+      online_partecipants.splice(0, online_partecipants.length, ...partecipants.map((p) => p.id));
     })
     .joining((partecipant) => {
       console.log('Partecipant joined', partecipant);
@@ -101,7 +78,7 @@ function connect () {
       }
 
       online_partecipants.push(partecipant.id);
-      partecipants.push(partecipant);
+      game_session.partecipants.push(partecipant);
     })
     .leaving((partecipant) => {
       console.log('Partecipant left', partecipant);
@@ -166,38 +143,11 @@ function leaveGame () {
           </div>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-          <div class="px-8 py-8 text-gray-900 dark:text-gray-100">
-            <h3 class="relative mb-3 text-3xl font-bold leading-none tracking-tight text-gray-900 dark:text-white">
-              Partecipants
-              <span class="absolute -top-2 -end-2 bg-blue-100 text-blue-800 text-sm font-medium me-2 px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
-                {{ partecipants.length }} / {{ game_session.max_partecipants }}
-              </span>
-            </h3>
-
-            <div class="overflow-y-auto h-full">
-              <ul>
-                <li v-for="partecipant in sortedPartecipants" class="flex justify-between">
-                  <div>
-                    <span v-if="isConnected(partecipant)" class="inline-block bg-green-500 text-white p-1 rounded-md"></span>
-                    <span v-else class="inline-block bg-red-500 text-white p-1 rounded-md"></span>
-                    <span class="inline-block mx-2">{{ partecipant.name }}</span>
-                  </div>
-
-                  <div class="block font-mono">
-                    <span v-for="n in (partecipant.answers_correct)">o</span>
-                    <span v-for="n in (winningAnswersCount - partecipant.answers_correct)">x</span>
-
-                    | 
-
-                    <span v-for="n in (partecipant.answers_available)">o</span>
-                    <span v-for="n in (maxAnswersAvailable - partecipant.answers_available)">x</span>
-                  </div>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
+        <GameSessionPartecipants
+          :game_session="game_session"
+          :online_partecipants="online_partecipants"
+          :winning_answers_count="winning_answers_count"
+        />
       </div>
     </div>
 
