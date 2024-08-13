@@ -136,6 +136,8 @@ return [
         'default_max_partecipants' => 25,
         'answers_available'        => 1,
         'winning_answers_count'    => 5,
+        'question_expires_in'      => 30, // seconds
+        'retry_question_expires_in' => 10, // seconds
     ],
 
 ];

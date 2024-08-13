@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class GameSession extends Model
 {
@@ -22,9 +23,14 @@ class GameSession extends Model
     /**
      * RELATIONS
      */
-    public function partecipants()
+    public function partecipants(): HasMany
     {
         return $this->hasMany(Partecipant::class);
+    }
+
+    public function questions(): HasMany
+    {
+        return $this->hasMany(Question::class);
     }
 
     /**

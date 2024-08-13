@@ -4,15 +4,21 @@ import Modal from '@/Components/Modal.vue'
 import Alert from '@/Components/Alert.vue'
 import StatusBadge from '@/Components/GameSession/StatusBadge.vue'
 import GameSessionPartecipants from '@/Components/GameSession/Partecipants.vue';
+import GameSessionQuestionList from '@/Components/GameSession/QuestionsList.vue';
+import Countdown from '@/Components/GameSession/Countdown.vue';
+import InputError from '@/Components/InputError.vue';
 import GuestLayout from '@/Layouts/GuestLayout.vue';
-import { ref, reactive, computed } from 'vue';
+import { ref, reactive, computed, PropType } from 'vue';
 import axios from 'axios';
 import { onMounted } from 'vue'
 import { GameSession } from '@/Models/GameSession';
+import { Question } from '@/Models/Question';
+import { Answer } from '@/Models/Answer';
+import { Partecipant } from '@/Models/Partecipant';
 
 const { game_session, auth, winning_answers_count, partecipant } = defineProps({
   auth: {
-    type: Object,
+    type: Object as PropType<any>,
   },
   game_session: {
     type: Object as PropType<GameSession>,
@@ -27,7 +33,9 @@ const { game_session, auth, winning_answers_count, partecipant } = defineProps({
   },
 });
 
-const game_status = 'waiting-partecipants';
+const game_status = computed(() => {
+  return game_session.status;
+});
 const online_partecipants = reactive([]);
 
 function getRandomAmazingName () {
@@ -40,6 +48,24 @@ function getRandomAmazingName () {
 const name = ref(getRandomAmazingName());
 const joinModalErrors = ref({});
 const joinModalShow = ref(!auth.user);
+
+const currentQuestion = computed(() => {
+  const unansweredQuestions =  game_session.questions.filter((q) => !q.answered_at).sort((a: Question, b: Question) => a.created_at.getTime() - b.created_at.getTime());
+  if (!unansweredQuestions.length) {
+    return null;
+  }
+
+  return unansweredQuestions[0];
+});
+
+const latestAnswer = computed(() => {
+  const answers = currentQuestion.value?.answers?.sort((a: Answer, b: Answer) => {
+    return (a.answered_at?.getTime() || 0) - (b.answered_at?.getTime() || 0)
+  });
+  return answers?.length ? answers[0] : null;
+});
+
+const answerResult = ref(null);
 
 function onPartecipantJoin () {
   router.post(`/game/${game_session.slug}/join`, { name: name.value }, {
@@ -95,8 +121,42 @@ function connect () {
       console.log('Partecipant left', partecipant);
       online_partecipants.splice(online_partecipants.indexOf(partecipant.id), 1);
     })
-    .listen('*', (e) => {
-      console.log(e);
+    .listen('GameSession\\WritingQuestion', (data: { game_session: GameSession }) => {
+      console.log('Writing question', data.game_session.status);
+      game_session.status = data.game_session.status;
+    })
+    .listen('GameSession\\NextQuestion', (data: { game_session: GameSession, question: Question }) => {
+      console.log('New question', data.question);
+      game_session.questions.push(data.question);
+      game_session.status = data.game_session.status;
+    })
+    .listen('GameSession\\BookedQuestion', (data: { game_session: GameSession, question: Question }) => {
+      console.log('Booked question', data.question);
+      game_session.questions.splice(game_session.questions.findIndex((q) => q.id === data.question.id), 1, data.question);
+      game_session.status = data.game_session.status;
+    })
+    .listen('GameSession\\CheckingAnswer', (data: { answer: Answer }) => {
+      console.log('Checking answer', data.answer);
+      if (!game_session.question.answers) {
+        game_session.question.answers = [];
+      }
+
+      game_session.questions.answers.push(data.answer);
+      game_session.status = data.answer.question.game_session.status;
+    })
+    .listen('GameSession\\AnswerResult', (data: { answer: Answer }) => {
+      console.log('Answer result', data.answer);
+      answerResult.value = data.answer;
+      setTimeout(() => {
+        answerResult.value = null;
+      }, 10000);
+    })
+    .listen('GameSession\\GameOver', (data: { game_session: GameSession }) => {
+      console.log('Game over', data.game_session.status);
+      game_session.status = data.game_session.status;
+    })
+    .listenToAll((e, data) => {
+      console.log(e, data);
     });
 }
 
@@ -104,7 +164,33 @@ function leaveGame () {
   Echo.leave(`game-session.${game_session.slug}`);
   router.post(`/game/${game_session.slug}/leave`);
 }
-</script>
+
+function bookQuestion () {
+  axios.post(route('game-sessions.front.book', [ game_session.slug, currentQuestion.value.id ]), {})
+    .then(({ data }) => {
+      console.log('Question booked', data);
+    })
+    .catch(({ response }) => {
+      console.log('Error booking question', response.data);
+      alert(response.data.message);
+    });
+}
+
+const answerText = ref('');
+const answerErrors = ref([]);
+function answerSubmit() {
+  axios.post(route('game-sessions.front.answer', [ game_session.slug, currentQuestion.value.id ]), { answer: answerText.value })
+    .then(({ data }) => {
+      console.log('Answer submitted', data);
+      answerText.value = '';
+    })
+    .catch(({ response }) => {
+      console.log('Error submitting answer', response.data);
+      answerErrors.value = response.data.message;
+    });
+}
+
+</script> 
 
 <template>
   <GuestLayout>
@@ -138,19 +224,114 @@ function leaveGame () {
           </div>
 
           <div
+            v-if="['writing-question', 'waiting-booking', 'answer-booked', 'answer-check'].includes(game_status)"
+            class="px-8 py-4 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-4"
+          >
+            <h1 class="mb-4 text-4xl font-extrabold leading-none tracking-tight text-gray-900 dark:text-white">
+              Current Question
+            </h1>
+
+            <div 
+              v-if="['waiting-booking', 'answer-booked', 'answer-check'].includes(game_status)"
+              class="flex justify-between items-center bg-indigo-500 rounded-lg px-6 py-4"
+            >
+              <div class="text-xl">
+                {{ currentQuestion.text }}
+              </div>
+
+              <div class="w-32 flex justify-end">
+                <Countdown v-if="game_status == 'waiting-booking'" :ends_at="currentQuestion.expires_at" />
+                <span v-if="game_status == 'answer-booked'" class="text">Booked!</span>
+              </div>
+            </div>
+
+            <div v-if="game_status == 'answer-check'" class="my-4">
+              <template v-if="!answerResult">
+                <Alert
+                  v-if="latestAnswer.partecipant.id != partecipant.id"
+                  type="success"
+                >
+                  The host is checking the answer of {{ latestAnswer?.partecipant.name }}. Please wait.
+                </Alert>
+
+                <div v-if="latestAnswer.partecipant.id == partecipant.id">
+                  <p class="text-sm font-bold mt-0">Your answer</p>
+                  <p class="italic text-lg mb-3">> {{ latestAnswer.text }}</p>
+                  <Alert
+                    type="success"
+                  >
+                    The host is checking your answer. Please wait.
+                  </Alert>
+                </div>
+              </template>
+            </div>
+
+              
+            <template v-if="!!answerResult">
+              <Alert v-if="answerResult.is_correct" type="success">Congratulations {{ answerResult.partecipant.name }} the answer is correct!</Alert>
+              <Alert v-else type="error">Wrong answer! {{ answerResult.partecipant.name }} you'll have better luck on the next question!</Alert>
+            </template>
+
+            <p
+              v-if="['writing-question'].includes(game_status)"
+              class="text-md dark:text-gray-400"
+            >
+              The host is writing a new question. Please wait.
+            </p>
+
+            <p
+              v-if="['answer-booked'].includes(game_status) && currentQuestion.booked_by.id != partecipant.id"
+              class="text-md dark:text-gray-400"
+            >
+              {{ currentQuestion.booked_by?.name }} was faster an booked the question. Please wait for the answer!
+            </p>
+
+            <button
+              class="text-white focus:ring-4 focus:outline-none focus:ring-blue-300 text-xl rounded-lg w-full py-4 text-center bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 my-4"
+              :class="{'cursor-not-allowed bg-gray-500 hover:bg-gray-500 dark:bg-gray-500 dark:hover:bg-gray-500 dark:focus:ring-gray' : !['waiting-booking'].includes(game_status)}"
+              :disabled="!['waiting-booking'].includes(game_status)"
+              @click="bookQuestion"
+            >
+              Request to answer the question
+            </button>
+
+            <div
+              v-if="['answer-booked'].includes(game_status) && currentQuestion.booked_by.id == partecipant.id"
+              class="px-4 py-4 dark:bg-blue-700 shadow-sm sm:rounded-lg mb-4"
+            >
+              <label
+                for="answer"
+                class="block text-gray-700 dark:text-white text-sm font-bold mb-2"
+              >
+                Write your answer
+              </label>
+              <textarea
+                v-model="answerText"
+                class="shadow appearance-none border rounded w-full py-2 px-3 dark:bg-gray-200 text-gray-900 leading-tight focus:outline-none focus:shadow-outline"
+                placeholder="Answer"
+                rows="3"
+              ></textarea>
+              <InputError class="mt-2" :message="answerErrors" />
+
+              <button
+                type="button"
+                class="text-white inline-flex items-center bg-green-700 hover:bg-green-800 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-green-700 dark:hover:bg-green-800 dark:focus:ring-green-700"
+                @click="answerSubmit"
+              >
+                Submit
+              </button>
+            </div>
+          </div>
+
+          <div
+            v-if="game_session.questions.length > 1"
             class="px-8 py-8 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-4"
           >
             <h1 class="mb-4 text-4xl font-extrabold leading-none tracking-tight text-gray-900 dark:text-white">
-              Questions
+              Previous Questions
             </h1>
 
-            <Alert type="error">
-              Before starting the game let's wait for all the partecipants to join
-            </Alert>
-
-            <p class="mt-4 text-gray-500 dark:text-gray-400">
-              Domande con i relativi controlli
-            </p>
+            <GameSessionQuestionList :game_session="game_session" :partecipant="partecipant" />
           </div>
         </div>
 

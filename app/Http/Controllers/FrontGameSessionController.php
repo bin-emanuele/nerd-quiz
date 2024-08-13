@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\GameSession\BookedQuestion;
+use App\Events\GameSession\CheckingAnswer;
 use App\Events\GameSession\PartecipantJoined;
 use App\Models\GameSession;
+use App\Models\Question;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -28,7 +31,7 @@ class FrontGameSessionController extends Controller
 
     function show(string $slug)
     {
-        $game_session = GameSession::with('partecipants')->where('slug', $slug)->firstOrFail();
+        $game_session = GameSession::with('partecipants', 'questions', 'questions.answers', 'questions.answers.partecipant', 'questions.booked_by')->where('slug', $slug)->firstOrFail();
 
         return Inertia::render('GameSessions/Front', [
             'game_session'          => $game_session,
@@ -56,6 +59,7 @@ class FrontGameSessionController extends Controller
             return redirect()->back()->withErrors(['This game session is not accepting new partecipants!'], 'name');
         }
 
+        /** @var \App\Models\Partecipant */
         $partecipant = $game_session->partecipants()->create([
             'name'              => $request->input('name'),
             'answers_available' => config('app.game.answers_available'),
@@ -72,5 +76,77 @@ class FrontGameSessionController extends Controller
         auth('partecipant')->logout();
 
         return redirect()->route('home');
+    }
+
+    function book(string $slug, Question $question)
+    {
+        $game_session = GameSession::with('partecipants')->where('slug', $slug)->firstOrFail();
+
+        if (Auth::guard('partecipant')->user()->game_session_slug !== $slug) {
+            return response()->json(['message' => 'You cannot book a question on this game!'], 422);
+        }
+
+        if ($question->expires_at->isPast()) {
+            return response()->json(['message' => 'This question has expired!'], 422);
+        }
+
+        if ($question->booked_by_id !== null) {
+            return response()->json(['message' => "This question has already been booked by {$question->booked_by->name}!"], 422);
+        }
+
+        if ($game_session->status !== 'waiting-booking') {
+            return response()->json(['message' => 'You cannot book a question on this game!'], 422);
+        }
+
+        $question->update([
+            'booked_by_id' => Auth::guard('partecipant')->id(),
+        ]);
+
+        $game_session->update([
+            'status' => 'answer-booked',
+        ]);
+
+        BookedQuestion::dispatch($game_session, $question->refresh()->load('booked_by'));
+
+        return response()->json(['message' => 'Question booked!', 'question' => $question->refresh()]);
+    }
+
+    function answer(string $slug, Question $question, Request $request)
+    {
+        $request->validate([
+            'answer' => 'required|string',
+        ]);
+
+        $game_session = GameSession::with('questions')->where('slug', $slug)->firstOrFail();
+        $partecipant = Auth::guard('partecipant')->user();
+
+        if ($game_session->status !== 'answer-booked') {
+            return response()->json(['message' => ['This game session is not accepting answers!']]);
+        }
+
+        if ($question->game_session_id !== $game_session->id) {
+            return response()->json(['message' => ['This question does not belong to this game session!']]);
+        }
+
+        if ($question->answers->contains('partecipant_id', $partecipant->id)) {
+            return response()->json(['message' => ['You have already answered this question!']]);
+        }
+
+        if ($partecipant->answers_available <= 0) {
+            return response()->json(['message' => ['You have no more answers available!']]);
+        }
+
+        $answer = $question->answers()->create([
+            'partecipant_id' => $partecipant->id,
+            'text'           => $request->input('answer'),
+            'answered_at'    => now(),
+        ]);
+        $game_session->update([
+            'status' => 'answer-check',
+        ]);
+
+        CheckingAnswer::dispatch($answer);
+
+        return response()->json(['message' => 'Question booked!', 'question' => $question->refresh()]);
     }
 }

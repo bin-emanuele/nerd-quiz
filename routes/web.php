@@ -20,16 +20,27 @@ Route::post('/game/{slug}/join', [FrontGameSessionController::class, 'join'])->n
 Route::post('/game/{slug}/leave', [FrontGameSessionController::class, 'leave'])->name('game-sessions.front.leave')
     ->withoutMiddleware(HandleInertiaRequests::class)
     ->middleware(HandleFrontInertiaRequests::class);
+Route::post('/game/{slug}/book/{question}', [FrontGameSessionController::class, 'book'])->name('game-sessions.front.book')
+    ->withoutMiddleware(HandleInertiaRequests::class)
+    ->middleware(HandleFrontInertiaRequests::class);
+Route::post('/game/{slug}/answer/{question}', [FrontGameSessionController::class, 'answer'])->name('game-sessions.front.answer')
+    ->withoutMiddleware(HandleInertiaRequests::class)
+    ->middleware(HandleFrontInertiaRequests::class);
 
 Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
+
+Route::post('game-sessions/{game_session}/reset', [GameSessionController::class, 'reset'])->name('game-sessions.reset');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    Route::post('game-sessions/{game_session}/writing', [GameSessionController::class, 'writingQuestion'])->name('game-sessions.writing-question');
+    Route::post('game-sessions/{game_session}/question', [GameSessionController::class, 'nextQuestion'])->name('game-sessions.next-question');
+    Route::post('game-sessions/{game_session}/answer/{answer}/confirm', [GameSessionController::class, 'confirmAnswer'])->name('game-sessions.confirm-answer');
     Route::resource('game-sessions', GameSessionController::class);
 });
 

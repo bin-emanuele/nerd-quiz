@@ -53,7 +53,7 @@ const maxAnswersAvailable = computed(() => {
       <h3 class="relative mb-3 text-3xl font-bold leading-none tracking-tight text-gray-900 dark:text-white">
         Partecipants
         <span class="absolute -top-2 -end-2 bg-blue-100 text-blue-800 text-sm font-medium me-2 px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
-          {{ game_session.partecipants.length }} / {{ game_session.max_partecipants }}
+          {{ game_session.partecipants?.length || 0 }} / {{ game_session.max_partecipants }}
         </span>
       </h3>
 

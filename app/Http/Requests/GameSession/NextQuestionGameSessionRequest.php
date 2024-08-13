@@ -1,17 +1,17 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\GameSession;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class UpdateGameSessionRequest extends FormRequest
+class NextQuestionGameSessionRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -22,7 +22,7 @@ class UpdateGameSessionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'text' => ['required', 'string'],
         ];
     }
 }

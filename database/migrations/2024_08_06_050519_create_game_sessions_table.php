@@ -26,7 +26,7 @@ return new class extends Migration
                 'writing-question',
                 'waiting-booking',
                 'answer-booked',
-                'answer-verification',
+                'answer-check',
                 'game-over',
             ])->default('waiting-partecipants');
 
