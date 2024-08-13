@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Events\GameSession\AnswerResult;
 use App\Events\GameSession\GameOver;
 use App\Events\GameSession\NextQuestion;
+use App\Events\GameSession\ResetGame;
 use App\Events\GameSession\WritingQuestion;
 use App\Http\Requests\GameSession\NextQuestionGameSessionRequest;
 use App\Http\Requests\GameSession\StoreGameSessionRequest;
@@ -98,6 +99,8 @@ class GameSessionController extends Controller
             $question->answers()->delete();
             $question->delete();
         });
+
+        ResetGame::dispatch($game_session);
 
         return response()->json(['message' => 'Game session resetted!', 'game_session' => $game_session->refresh()->load('partecipants', 'questions')]);
     }

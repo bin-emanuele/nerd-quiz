@@ -157,6 +157,10 @@ function connect () {
       console.log('Game over', data.game_session.status);
       game_session.status = data.game_session.status;
     })
+    .listen('GameSession\\ResetGame', (data: { game_session: GameSession }) => {
+      console.log('Reset game', data.game_session);
+      router.get(`/game/${game_session.slug}`);
+    })
     .listenToAll((e, data) => {
       console.log(e, data);
     });
@@ -197,7 +201,6 @@ function answerSubmit() {
 <template>
   <GuestLayout>
     <Head :title="`Game Session - ${game_session.title}`"></Head>
-    <pre>{{latestAnswer}}</pre>
 
     <div class="py-12">
       <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-4">

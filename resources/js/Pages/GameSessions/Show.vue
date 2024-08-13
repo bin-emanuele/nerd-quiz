@@ -30,10 +30,6 @@ const { game_session, auth } = defineProps({
 const partecipants = reactive([...game_session.partecipants || []])
 const online_partecipants = reactive([])
 
-const game_status = computed(() => {
-  return game_session.status
-})
-
 const currentQuestion = computed(() => {
   const unansweredQuestions = game_session.questions.filter((q) => !q.answered_at).sort((a, b) => a.created_at - b.created_at);
   if (!unansweredQuestions.length) {
@@ -46,8 +42,6 @@ const latestAnswer = computed(() => {
   const answers = currentQuestion.value?.answers?.sort((a, b) => a.answered_at - b.answered_at);
   return answers?.length ? answers[0] : null;
 });
-
-connect()
 
 function connect () {
   Echo.join(`game-session.${game_session.slug}`)
@@ -87,6 +81,7 @@ function connect () {
     .listen('GameSession\\WritingQuestion', (data) => {
       console.log('Writing question', data.game_session.status);
       game_session.status = data.game_session.status;
+      questionForm.show = true;
     })
     .listen('GameSession\\NextQuestion', (data) => {
       console.log('New question', data.question);
@@ -144,7 +139,7 @@ function nextQuestion () {
     })
 }
 const canWriteNextQuestion = computed(() => {
-  return game_status.value === 'waiting-partecipants' && !questionForm.show
+  return game_session.status === 'waiting-partecipants' && !questionForm.show
 })
 function questionSubmit () {
   questionForm.show = false
@@ -178,7 +173,6 @@ function resetGame () {
   axios.post(route('game-sessions.reset', game_session.id), {})
     .then(({ data }) => {
       console.log('resetGame', data)
-      game_session.value = data.game_session.status
       router.get(`/game-sessions/${game_session.id}`)
     })
     .catch((error) => {
@@ -188,7 +182,8 @@ function resetGame () {
 }
 
 onMounted(() => {
-  questionForm.show = (game_status.value === 'writing-question')
+  questionForm.show = (game_session.status === 'writing-question')
+  connect()
 });
 
 </script>
@@ -211,7 +206,7 @@ onMounted(() => {
             <h1 class="relative mb-4 text-4xl font-extrabold leading-none tracking-tight text-gray-900 dark:text-white">
               {{ game_session.title }}
 
-              <StatusBadge :status="game_status"></StatusBadge>
+              <StatusBadge :status="game_session.status"></StatusBadge>
             </h1>
 
             <p class="mt-4 text-gray-500 dark:text-gray-400">
@@ -251,11 +246,11 @@ onMounted(() => {
                 class="flex items-center"
               >
                 <Countdown
-                  v-if="game_status == 'waiting-booking'"
+                  v-if="game_session.status == 'waiting-booking'"
                   :ends_at="currentQuestion.expires_at"
                 />
                 <span
-                  v-if="game_status == 'answer-booked'"
+                  v-if="game_session.status == 'answer-booked'"
                   class="text"
                 >Booked!</span>
               </div>
@@ -266,7 +261,7 @@ onMounted(() => {
             </div>
 
             <div
-              v-if="game_status == 'answer-booked'"
+              v-if="game_session.status == 'answer-booked'"
               class="my-4"
             >
               <Alert type="info">
@@ -276,7 +271,7 @@ onMounted(() => {
             </div>
 
             <div
-              v-if="game_status == 'answer-check'"
+              v-if="game_session.status == 'answer-check'"
               class="my-4 p-4 dark:text-gray-800 dark:bg-blue-300 shadow-sm sm:rounded-lg"
             >
               <Alert type="dark">Answer to check</Alert>
@@ -299,15 +294,15 @@ onMounted(() => {
                   >Wrong!</button>
                 </div>
               </div>
-
             </div>
-            <pre>{{ latestAnswer }}</pre>
 
             <button
               class="px-4 py-2 bg-blue-700 text-white rounded-md"
               v-if="canWriteNextQuestion"
               @click="nextQuestion"
-            >Next Question</button>
+            >
+              Next Question
+            </button>
 
             <div
               v-if="questionForm.show"
