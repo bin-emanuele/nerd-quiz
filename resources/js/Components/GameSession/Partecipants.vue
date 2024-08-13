@@ -2,17 +2,13 @@
 import { computed, reactive, PropType } from 'vue'
 import { GameSession } from '../../Models/GameSession';
 
-const { game_session, winning_answers_count, online_partecipants } = defineProps({
+const { game_session, winning_answers_count } = defineProps({
   game_session: {
     type: Object as PropType<GameSession>,
     required: true,
   },
   winning_answers_count: {
     type: Number,
-    required: true,
-  },
-  online_partecipants: {
-    type: Array as PropType<number[]>,
     required: true,
   },
 });
@@ -37,7 +33,7 @@ const sortedPartecipants = computed(() => {
 });
 
 const isConnected = computed(() => (partecipant) => {
-  return online_partecipants.includes(partecipant.id);
+  return game_session.online_partecipants.includes(partecipant.id);
 });
 
 const maxAnswersAvailable = computed(() => {

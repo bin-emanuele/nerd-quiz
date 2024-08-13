@@ -30,7 +30,8 @@ class AnswerResult implements ShouldBroadcast
     public function broadcastWith(): array
     {
         return [
-            'answer' => $this->answer->load('question', 'partecipant'),
+            'answer'       => $this->answer->load('question', 'partecipant'),
+            'game_session' => $this->answer->question->game_session->load('partecipants'),
         ];
     }
 

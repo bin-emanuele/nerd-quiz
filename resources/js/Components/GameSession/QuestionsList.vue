@@ -27,8 +27,8 @@ const isAdmin = computed(() => {
     Waiting for the game to start...
   </Alert>
 
-  <div class="flex">
-    <div v-for="question in game_session.questions" class="flex flex-col w-full">
+  <div class="flex flex-col">
+    <div v-for="question in game_session.answeredQuestions" class="flex flex-col w-full mb-4">
       <div class="flex items-center justify-between">
         <div class="flex flex-col items center">
           <div class="text-lg font-bold">{{ question.text }}</div>
@@ -38,7 +38,8 @@ const isAdmin = computed(() => {
         <div class="text-sm text-gray-500">Correct answer: {{ question.answered_at }}</div>
       </div>
 
-      <div class="flex flex-col">
+      <div v-if="question.answers?.length > 0" class="flex flex-col pl-4">
+        <p class="text-sm -mb-4 mt-4">Answers:</p>
         <div v-for="answer in question.answers" class="flex flex items-center mt-4">
           <div class="mr-4">
             <span v-if="answer.is_correct" class="text-mono px-2 py-1 text-white bg-green-500 block w-8 h-8 text-center rounded-full">v</span>

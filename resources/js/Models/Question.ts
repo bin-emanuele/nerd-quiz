@@ -22,7 +22,7 @@ export class Question {
     this.game_session = data.game_session ? new GameSession(data.game_session) : undefined;
     this.booked_by_id = data.booked_by_id || null;
     this.booked_by = data.booked_by ? new Partecipant(data.booked_by) : null;
-    this.answers = data.answers?.map(a => new Answer(a)) || [];
+    this.answers = data.answers || [];
     this.answered_at = data?.answered_at;
     this.expires_at = data?.expires_at;
     this.created_at = data.created_at || new Date();

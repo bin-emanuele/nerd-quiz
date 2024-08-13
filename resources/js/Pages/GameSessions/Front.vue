@@ -16,7 +16,7 @@ import { Question } from '@/Models/Question';
 import { Answer } from '@/Models/Answer';
 import { Partecipant } from '@/Models/Partecipant';
 
-const { game_session, auth, winning_answers_count, partecipant } = defineProps({
+const props = defineProps({
   auth: {
     type: Object as PropType<any>,
   },
@@ -33,10 +33,10 @@ const { game_session, auth, winning_answers_count, partecipant } = defineProps({
   },
 });
 
+const game_session = reactive(new GameSession(props.game_session));
 const game_status = computed(() => {
   return game_session.status;
 });
-const online_partecipants = reactive([]);
 
 function getRandomAmazingName () {
   const names = ['Hulk', 'Spiderman', 'Ironman', 'Thor', 'Captain America', 'Black Widow', 'Hawkeye', 'Black Panther', 'Doctor Strange', 'Antman', 'Wasp', 'Scarlet Witch', 'Vision', 'Falcon', 'Winter Soldier', 'Star Lord', 'Gamora', 'Drax', 'Rocket', 'Groot', 'Mantis', 'Nebula', 'Captain Marvel', 'Valkyrie', 'Okoye', 'Shuri', 'Wong', 'Nick Fury', 'Maria Hill', 'Phil Coulson', 'Agent 13', 'Quicksilver', 'War Machine', 'Heimdall', 'Korg', 'Miek', 'The Collector', 'Eitri', 'Ned Leeds', 'Happy Hogan', 'Pepper Potts', 'Morgan Stark', 'Yondu', 'Kraglin', 'Nova Prime', 'Howard the Duck', 'The Grandmaster', 'M’Baku', 'Nakia', 'Ramonda', 'Zuri', 'Sharon Carter', 'Crossbones', 'Baron Zemo', 'Red Skull', 'The Ancient One', 'Mordo', 'Kaecilius', 'Dormammu', 'Ego', 'Ayesha', 'Taserface', 'The Vulture', 'Shocker', 'Scorpion', 'Mysterio', 'Hydro'];
@@ -47,19 +47,26 @@ function getRandomAmazingName () {
 
 const name = ref(getRandomAmazingName());
 const joinModalErrors = ref({});
-const joinModalShow = ref(!auth.user);
+const joinModalShow = ref(!props.auth.user);
 
 const currentQuestion = computed(() => {
-  const unansweredQuestions =  game_session.questions.filter((q) => !q.answered_at).sort((a: Question, b: Question) => a.created_at.getTime() - b.created_at.getTime());
-  if (!unansweredQuestions.length) {
-    return null;
-  }
-
-  return unansweredQuestions[0];
+  return game_session.currentQuestion;
 });
 
 const latestAnswer = ref(null);
 const answerResult = ref(null);
+
+function connect () {
+  game_session.connect()
+  .listen('GameSession\\AnswerResult', (data: { answer: Answer, game_session: GameSession }) => {
+    console.log('Answer result', data.answer);
+        latestAnswer.value = null;
+        answerResult.value = data.answer;
+        setTimeout(() => {
+          answerResult.value = null;
+        }, 10000);
+      });
+}
 
 function onPartecipantJoin () {
   router.post(`/game/${game_session.slug}/join`, { name: name.value }, {
@@ -74,7 +81,7 @@ function onPartecipantJoin () {
 }
 
 onMounted(() => {
-  if (auth.user) {
+  if (props.auth.user) {
     connect();
   }
 
@@ -85,86 +92,6 @@ onMounted(() => {
     latestAnswer.value = answers?.length ? answers[0] : {};
   }
 });
-
-
-function connect () {
-  Echo.join(`game-session.${game_session.slug}`)
-    .here((partecipants) => {
-      console.log('Partecipants here', partecipants);
-      partecipants
-        .filter(x => x.type === 'partecipant')
-        .forEach((partecipant) => {
-          if (!game_session.partecipants.some((p) => p.id === partecipant.id)) {
-            game_session.partecipants.push(partecipant);
-          }
-        });
-      online_partecipants.splice(0, online_partecipants.length, ...partecipants.map((p) => p.id));
-    })
-    .joining((partecipant) => {
-      console.log('Partecipant joined', partecipant);
-      if (partecipant.type !== 'partecipant') {
-        return;
-      }
-
-      online_partecipants.push(partecipant.id);
-
-      if (game_session.partecipants.map(x => x.id).includes(partecipant.id)) {
-        return;
-      }
-
-      game_session.partecipants.push(partecipant);
-    })
-    .leaving((partecipant) => {
-      if (partecipant.type !== 'partecipant') {
-        return;
-      }
-
-      console.log('Partecipant left', partecipant);
-      online_partecipants.splice(online_partecipants.indexOf(partecipant.id), 1);
-    })
-    .listen('GameSession\\WritingQuestion', (data: { game_session: GameSession }) => {
-      console.log('Writing question', data.game_session.status);
-      game_session.status = data.game_session.status;
-    })
-    .listen('GameSession\\NextQuestion', (data: { game_session: GameSession, question: Question }) => {
-      console.log('New question', data.question);
-      game_session.questions.push(data.question);
-      game_session.status = data.game_session.status;
-    })
-    .listen('GameSession\\BookedQuestion', (data: { game_session: GameSession, question: Question }) => {
-      console.log('Booked question', data.question);
-      game_session.questions.splice(game_session.questions.findIndex((q) => q.id === data.question.id), 1, data.question);
-      game_session.status = data.game_session.status;
-    })
-    .listen('GameSession\\CheckingAnswer', (data: { answer: Answer }) => {
-      console.log('Checking answer', data.answer);
-      if (!currentQuestion.answers) {
-        currentQuestion.answers = [];
-      }
-      currentQuestion.answers.push(data.answer);
-      latestAnswer.value = data.answer;
-      game_session.status = data.answer.question.game_session.status;
-    })
-    .listen('GameSession\\AnswerResult', (data: { answer: Answer }) => {
-      console.log('Answer result', data.answer);
-      latestAnswer.value = null;
-      answerResult.value = data.answer;
-      setTimeout(() => {
-        answerResult.value = null;
-      }, 10000);
-    })
-    .listen('GameSession\\GameOver', (data: { game_session: GameSession }) => {
-      console.log('Game over', data.game_session.status);
-      game_session.status = data.game_session.status;
-    })
-    .listen('GameSession\\ResetGame', (data: { game_session: GameSession }) => {
-      console.log('Reset game', data.game_session);
-      router.get(`/game/${game_session.slug}`);
-    })
-    .listenToAll((e, data) => {
-      console.log(e, data);
-    });
-}
 
 function leaveGame () {
   Echo.leave(`game-session.${game_session.slug}`);
@@ -341,7 +268,6 @@ function answerSubmit() {
 
         <GameSessionPartecipants
           :game_session="game_session"
-          :online_partecipants="online_partecipants"
           :winning_answers_count="winning_answers_count"
         />
       </div>

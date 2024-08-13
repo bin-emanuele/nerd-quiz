@@ -1,6 +1,6 @@
 <script setup>
 
-import { computed, reactive, onMounted } from 'vue'
+import { computed, reactive, onMounted, watchEffect } from 'vue'
 import { router } from '@inertiajs/vue3'
 import axios from 'axios'
 
@@ -13,13 +13,12 @@ import Countdown from '@/Components/GameSession/Countdown.vue'
 import InputError from '@/Components/InputError.vue'
 import { Head, useForm } from '@inertiajs/vue3'
 
-const { game_session, auth } = defineProps({
+import { GameSession } from '@/Models/GameSession'
+
+const props = defineProps({
   game_session: {
     type: Object,
     required: true,
-  },
-  auth: {
-    type: Object,
   },
   winning_answers_count: {
     type: Number,
@@ -27,89 +26,17 @@ const { game_session, auth } = defineProps({
   },
 })
 
+const game_session = reactive(new GameSession(props.game_session))
 const partecipants = reactive([...game_session.partecipants || []])
-const online_partecipants = reactive([])
 
 const currentQuestion = computed(() => {
-  const unansweredQuestions = game_session.questions.filter((q) => !q.answered_at).sort((a, b) => a.created_at - b.created_at);
-  if (!unansweredQuestions.length) {
-    return null;
-  }
-
-  return unansweredQuestions[0];
+  return game_session.currentQuestion
 });
+
 const latestAnswer = computed(() => {
   const answers = currentQuestion.value?.answers?.sort((a, b) => a.answered_at - b.answered_at);
   return answers?.length ? answers[0] : null;
 });
-
-function connect () {
-  Echo.join(`game-session.${game_session.slug}`)
-    .here((partecipants) => {
-      console.log('Partecipants here', partecipants);
-      partecipants
-        .filter(x => x.type === 'partecipant')
-        .forEach((partecipant) => {
-          if (!game_session.partecipants.some((p) => p.id === partecipant.id)) {
-            game_session.partecipants.push(partecipant);
-          }
-        });
-      online_partecipants.splice(0, online_partecipants.length, ...partecipants.map((p) => p.id));
-    })
-    .joining((partecipant) => {
-      console.log('Partecipant joined', partecipant);
-      if (partecipant.type !== 'partecipant') {
-        return;
-      }
-
-      online_partecipants.push(partecipant.id);
-
-      if (game_session.partecipants.map(x => x.id).includes(partecipant.id)) {
-        return;
-      }
-
-      game_session.partecipants.push(partecipant);
-    })
-    .leaving((partecipant) => {
-      if (partecipant.type !== 'partecipant') {
-        return;
-      }
-
-      console.log('Partecipant left', partecipant);
-      online_partecipants.splice(online_partecipants.indexOf(partecipant.id), 1);
-    })
-    .listen('GameSession\\WritingQuestion', (data) => {
-      console.log('Writing question', data.game_session.status);
-      game_session.status = data.game_session.status;
-      questionForm.show = true;
-    })
-    .listen('GameSession\\NextQuestion', (data) => {
-      console.log('New question', data.question);
-      if (!game_session.questions) {
-        game_session.questions = [];
-      }
-      game_session.questions.push(data.question);
-      game_session.status = data.game_session.status;
-    })
-    .listen('GameSession\\BookedQuestion', (data) => {
-      console.log('Booked question', data.question);
-      game_session.questions.splice(game_session.questions.findIndex((q) => q.id === data.question.id), 1, data.question);
-      game_session.status = data.game_session.status;
-    })
-    .listen('GameSession\\CheckingAnswer', (data) => {
-      console.log('Checking answer', data.answer);
-      console.log(currentQuestion.value);
-      if (!currentQuestion.value.answers) {
-        currentQuestion.value.answers = [];
-      }
-      currentQuestion.value.answers.push(data.answer);
-      game_session.status = data.answer.question.game_session.status;
-    })
-    .listenToAll((e, data) => {
-      console.log(e, data);
-    });
-}
-
 
 function leaveGame () {
   Echo.leave(`game-session.${game_session.slug}`);
@@ -120,7 +47,6 @@ function gotoSessions () {
   router.get(`/game-sessions`)
 }
 
-
 const questionForm = useForm({
   show: false,
   text: '',
@@ -130,7 +56,6 @@ function nextQuestion () {
     .then(({ data }) => {
       console.log('nextQuestion', data.status)
       game_session.status = data.status
-      questionForm.show = true
       questionForm.text = ''
     })
     .catch((error) => {
@@ -154,6 +79,9 @@ function questionSubmit () {
       alert(error.response)
     })
 }
+watchEffect(() => {
+  questionForm.show = (game_session.status === 'writing-question');
+});
 
 function confirmAnswer (isCorrect) {
   axios.post(route('game-sessions.confirm-answer', [game_session.id, latestAnswer.value.id]), {
@@ -173,7 +101,6 @@ function resetGame () {
   axios.post(route('game-sessions.reset', game_session.id), {})
     .then(({ data }) => {
       console.log('resetGame', data)
-      router.get(`/game-sessions/${game_session.id}`)
     })
     .catch((error) => {
       console.error('Error', error.message)
@@ -182,8 +109,7 @@ function resetGame () {
 }
 
 onMounted(() => {
-  questionForm.show = (game_session.status === 'writing-question')
-  connect()
+  game_session.connect()
 });
 
 </script>
@@ -232,43 +158,40 @@ onMounted(() => {
               Current Question
             </h1>
 
-            <div
-              v-if="currentQuestion"
-              class="flex items-center justify-between"
-            >
-              <div class="flex flex-col items center">
-                <div class="text-lg font-bold">{{ currentQuestion.text }}</div>
-                <div class="text-sm text-gray-500">{{ currentQuestion.answers?.length || 0 }} answers</div>
+            <template v-if="currentQuestion">
+              <div class="flex items-center justify-between">
+                <div class="flex flex-col items center">
+                  <div class="text-lg font-bold">{{ currentQuestion.text }}</div>
+                  <div class="text-sm text-gray-500">{{ currentQuestion.answers?.length || 0 }} answers</div>
+                </div>
+                <div
+                  v-if="!currentQuestion.answered_at"
+                  class="flex items-center"
+                >
+                  <Countdown
+                    v-if="game_session.status == 'waiting-booking'"
+                    :ends_at="currentQuestion.expires_at"
+                  />
+                  <span
+                    v-if="game_session.status == 'answer-booked'"
+                    class="text"
+                  >Booked!</span>
+                </div>
+                <div
+                  v-else
+                  class="text-sm text-gray-500"
+                >Correct answer: {{ currentQuestion.answered_at }}</div>
               </div>
-
               <div
-                v-if="!currentQuestion.answered_at"
-                class="flex items-center"
+                v-if="game_session.status == 'answer-booked'"
+                class="my-4"
               >
-                <Countdown
-                  v-if="game_session.status == 'waiting-booking'"
-                  :ends_at="currentQuestion.expires_at"
-                />
-                <span
-                  v-if="game_session.status == 'answer-booked'"
-                  class="text"
-                >Booked!</span>
+                <Alert type="info">
+                  {{ currentQuestion.booked_by?.name }} has booked the question! Waiting for the partecipant to submit the
+                  answer.
+                </Alert>
               </div>
-              <div
-                v-else
-                class="text-sm text-gray-500"
-              >Correct answer: {{ currentQuestion.answered_at }}</div>
-            </div>
-
-            <div
-              v-if="game_session.status == 'answer-booked'"
-              class="my-4"
-            >
-              <Alert type="info">
-                {{ currentQuestion.booked_by?.name }} has booked the question! Waiting for the partecipant to submit the
-                answer.
-              </Alert>
-            </div>
+            </template>
 
             <div
               v-if="game_session.status == 'answer-check'"
@@ -337,7 +260,7 @@ onMounted(() => {
           </div>
 
           <div
-            v-if="game_session.questions.length > 1"
+            v-if="game_session.questions?.length > 1"
             class="px-8 py-8 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-4"
           >
             <h1 class="mb-4 text-4xl font-extrabold leading-none tracking-tight text-gray-900 dark:text-white">
@@ -349,8 +272,7 @@ onMounted(() => {
 
         <GameSessionPartecipants
           :game_session="game_session"
-          :online_partecipants="online_partecipants"
-          :winning_answers_count="winning_answers_count"
+          :winning_answers_count="props.winning_answers_count"
         />
       </div>
     </div>

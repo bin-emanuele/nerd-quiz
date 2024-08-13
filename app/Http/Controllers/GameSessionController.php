@@ -102,7 +102,7 @@ class GameSessionController extends Controller
 
         ResetGame::dispatch($game_session);
 
-        return response()->json(['message' => 'Game session resetted!', 'game_session' => $game_session->refresh()->load('partecipants', 'questions')]);
+        return response()->json(['message' => 'Game session resetted!', 'game_session' => $game_session->refresh()->load('partecipants', 'questions', 'questions.answers', 'questions.answers.partecipant', 'questions.booked_by')]);
     }
 
     public function writingQuestion(GameSession $game_session)
@@ -159,13 +159,13 @@ class GameSessionController extends Controller
 
         if ($request->input('is_correct')) {
             $answer->partecipant->increment('answers_correct');
-            $status = $game_session->questions()->count() === config('app.game.questions_count') ? 'game-over' : 'writing-question';
+            $status = $answer->partecipant->answers_correct >= config('app.game.winning_answers_count') ? 'game-over' : 'writing-question';
 
             $game_session->status = $status;
 
             $answer->question->update([
                 'booked_by_id' => null,
-                'anwered_at'   => now(),
+                'answered_at'  => now(),
             ]);
 
             if ($status === 'game-over') {
@@ -174,7 +174,6 @@ class GameSessionController extends Controller
             } else {
                 WritingQuestion::dispatch($game_session);
             }
-
             $game_session->save();
         } else {
             $answer->partecipant->decrement('answers_available');
