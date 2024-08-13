@@ -30,7 +30,7 @@ class CheckingAnswer implements ShouldBroadcast
     public function broadcastWith(): array
     {
         return [
-            'answer' => $this->answer->load('question.game_session'),
+            'answer' => $this->answer->load('question.game_session', 'partecipant'),
         ];
     }
 

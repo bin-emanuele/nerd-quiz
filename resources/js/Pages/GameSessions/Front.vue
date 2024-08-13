@@ -58,13 +58,7 @@ const currentQuestion = computed(() => {
   return unansweredQuestions[0];
 });
 
-const latestAnswer = computed(() => {
-  const answers = currentQuestion.value?.answers?.sort((a: Answer, b: Answer) => {
-    return (a.answered_at?.getTime() || 0) - (b.answered_at?.getTime() || 0)
-  });
-  return answers?.length ? answers[0] : null;
-});
-
+const latestAnswer = ref(null);
 const answerResult = ref(null);
 
 function onPartecipantJoin () {
@@ -82,6 +76,13 @@ function onPartecipantJoin () {
 onMounted(() => {
   if (auth.user) {
     connect();
+  }
+
+  if (currentQuestion.value) {
+    const answers = currentQuestion.value?.answers?.sort((a: Answer, b: Answer) => {
+      return (a.answered_at?.getTime() || 0) - (b.answered_at?.getTime() || 0)
+    });
+    latestAnswer.value = answers?.length ? answers[0] : {};
   }
 });
 
@@ -137,15 +138,16 @@ function connect () {
     })
     .listen('GameSession\\CheckingAnswer', (data: { answer: Answer }) => {
       console.log('Checking answer', data.answer);
-      if (!game_session.question.answers) {
-        game_session.question.answers = [];
+      if (!currentQuestion.answers) {
+        currentQuestion.answers = [];
       }
-
-      game_session.questions.answers.push(data.answer);
+      currentQuestion.answers.push(data.answer);
+      latestAnswer.value = data.answer;
       game_session.status = data.answer.question.game_session.status;
     })
     .listen('GameSession\\AnswerResult', (data: { answer: Answer }) => {
       console.log('Answer result', data.answer);
+      latestAnswer.value = null;
       answerResult.value = data.answer;
       setTimeout(() => {
         answerResult.value = null;
@@ -195,6 +197,7 @@ function answerSubmit() {
 <template>
   <GuestLayout>
     <Head :title="`Game Session - ${game_session.title}`"></Head>
+    <pre>{{latestAnswer}}</pre>
 
     <div class="py-12">
       <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -236,7 +239,7 @@ function answerSubmit() {
               class="flex justify-between items-center bg-indigo-500 rounded-lg px-6 py-4"
             >
               <div class="text-xl">
-                {{ currentQuestion.text }}
+                {{ currentQuestion?.text }}
               </div>
 
               <div class="w-32 flex justify-end">
@@ -246,23 +249,21 @@ function answerSubmit() {
             </div>
 
             <div v-if="game_status == 'answer-check'" class="my-4">
-              <template v-if="!answerResult">
+              <template v-if="!answerResult && latestAnswer">
+                <p class="italic text-lg mb-3">> {{ latestAnswer.text }}</p>
                 <Alert
-                  v-if="latestAnswer.partecipant.id != partecipant.id"
+                  v-if="latestAnswer?.partecipant?.id != partecipant.id"
                   type="success"
                 >
-                  The host is checking the answer of {{ latestAnswer?.partecipant.name }}. Please wait.
+                  The host is checking the answer of {{ latestAnswer?.partecipant?.name }}. Please wait.
                 </Alert>
 
-                <div v-if="latestAnswer.partecipant.id == partecipant.id">
-                  <p class="text-sm font-bold mt-0">Your answer</p>
-                  <p class="italic text-lg mb-3">> {{ latestAnswer.text }}</p>
-                  <Alert
-                    type="success"
-                  >
-                    The host is checking your answer. Please wait.
-                  </Alert>
-                </div>
+                <Alert
+                  v-if="latestAnswer?.partecipant?.id == partecipant.id"
+                  type="success"
+                >
+                  The host is checking your answer. Please wait.
+                </Alert>
               </template>
             </div>
 

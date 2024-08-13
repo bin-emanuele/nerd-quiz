@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, PropType } from 'vue'
 import { GameSession } from '../../Models/GameSession';
-import { Partecipant } from '../../Models/Partecipant';
 
 const { game_session, winning_answers_count, online_partecipants } = defineProps({
   game_session: {
@@ -20,7 +19,7 @@ const { game_session, winning_answers_count, online_partecipants } = defineProps
 
 
 const sortedPartecipants = computed(() => {
-  return game_session.partecipants.sort((a, b) => {
+  return [...game_session.partecipants].sort((a, b) => {
     if (isConnected.value(a) && !isConnected.value(b)) {
       return -1;
     }
@@ -34,7 +33,7 @@ const sortedPartecipants = computed(() => {
     }
 
     return b.answers_correct - a.answers_correct;
-  });
+  }) || [];
 });
 
 const isConnected = computed(() => (partecipant) => {
@@ -67,13 +66,13 @@ const maxAnswersAvailable = computed(() => {
             </div>
 
             <div class="block font-mono">
-              <span v-for="n in (partecipant.answers_correct)">v</span>
-              <span v-for="n in (winning_answers_count - partecipant.answers_correct)">o</span>
+              <span v-for="n in (partecipant.answers_correct || 0)">v</span>
+              <span v-for="n in Math.max(0, (winning_answers_count - partecipant.answers_correct) || 0)">o</span>
 
               | 
 
-              <span v-for="n in (partecipant.answers_available)">o</span>
-              <span v-for="n in (maxAnswersAvailable - partecipant.answers_available)">x</span>
+              <span v-for="n in (partecipant.answers_available || 0)">o</span>
+              <span v-for="n in Math.max(0, (maxAnswersAvailable - partecipant.answers_available) || 0)">x</span>
             </div>
           </li>
         </ul>

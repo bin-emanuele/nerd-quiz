@@ -11,7 +11,6 @@ use App\Http\Requests\GameSession\StoreGameSessionRequest;
 use App\Http\Requests\GameSession\UpdateGameSessionRequest;
 use App\Models\Answer;
 use App\Models\GameSession;
-use App\Models\Question;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -100,7 +99,7 @@ class GameSessionController extends Controller
             $question->delete();
         });
 
-        return response()->json(['message' => 'Game session resetted!', 'game_session' => $game_session->refresh()]);
+        return response()->json(['message' => 'Game session resetted!', 'game_session' => $game_session->refresh()->load('partecipants', 'questions')]);
     }
 
     public function writingQuestion(GameSession $game_session)
@@ -121,7 +120,7 @@ class GameSessionController extends Controller
     public function nextQuestion(GameSession $game_session, NextQuestionGameSessionRequest $request)
     {
         if ($game_session->status !== 'writing-question') {
-            return redirect()->back()->withErrors(['This game session is not accepting new questions!'], 'text');
+            return response()->json(['message' => 'This game session is not accepting new questions!'], 422);
         }
 
         $question = $game_session->questions()->create([
@@ -134,6 +133,8 @@ class GameSessionController extends Controller
         ]);
 
         NextQuestion::dispatch($game_session, $question);
+
+        return response()->json(['message' => 'Question created!', 'question' => $question->refresh()]);
     }
 
     public function confirmAnswer(GameSession $game_session, Answer $answer, Request $request)
@@ -186,8 +187,6 @@ class GameSessionController extends Controller
 
             NextQuestion::dispatch($game_session, $answer->question);
         }
-
-        $game_session->update([ 'status' => 'answer-check' ]);
 
         return response()->json(['message' => 'Question confirmed!', 'answer' => $answer->refresh()]);
     }
