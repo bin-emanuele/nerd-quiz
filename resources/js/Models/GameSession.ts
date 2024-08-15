@@ -96,6 +96,11 @@ export class GameSession {
         this.questions.push(question);
         this.status = game_session.status;
       })
+      .listen('GameSession\\QuestionTimeout', ({ game_session, question }: { game_session: GameSession, question: Question }) => {
+        console.log('Question timeout', question);
+        this.questions.push(question);
+        this.status = game_session.status;
+      })
       .listen('GameSession\\BookedQuestion', ({ game_session, question }: { game_session: GameSession, question: Question }) => {
         console.log('Booked question', question);
         this.questions.splice(this.questions.findIndex((q) => q.id === question.id), 1, question);
@@ -131,7 +136,7 @@ export class GameSession {
   get currentQuestion () {
     const unansweredQuestions = this.questions
       .filter(q => !q.answered_at)
-      .sort((a, b) => a.created_at > b.created_at ? 1 : -1);
+      .sort((a, b) => a.created_at < b.created_at ? 1 : -1);
 
     if (!unansweredQuestions?.length) {
       return null;
