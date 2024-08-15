@@ -10,6 +10,7 @@ use App\Events\GameSession\WritingQuestion;
 use App\Http\Requests\GameSession\NextQuestionGameSessionRequest;
 use App\Http\Requests\GameSession\StoreGameSessionRequest;
 use App\Http\Requests\GameSession\UpdateGameSessionRequest;
+use App\Jobs\GameSession\QuestionTimeout as QuestionTimeoutJob;
 use App\Models\Answer;
 use App\Models\GameSession;
 use Illuminate\Http\Request;
@@ -136,6 +137,7 @@ class GameSessionController extends Controller
         ]);
 
         NextQuestion::dispatch($game_session, $question);
+        QuestionTimeoutJob::dispatch($game_session, $question)->delay($question->expires_at);
 
         return response()->json(['message' => 'Question created!', 'question' => $question->refresh()]);
     }
@@ -188,6 +190,7 @@ class GameSessionController extends Controller
             ]);
 
             NextQuestion::dispatch($game_session, $answer->question);
+            QuestionTimeoutJob::dispatch($game_session, $answer->question)->delay($answer->question->expires_at);
         }
 
         return response()->json(['message' => 'Question confirmed!', 'answer' => $answer->refresh()]);
