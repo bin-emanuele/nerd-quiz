@@ -6,7 +6,6 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Middleware\HandleFrontInertiaRequests;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 Route::get('/', [FrontGameSessionController::class, 'index'])->name('home')
     ->withoutMiddleware(HandleInertiaRequests::class)
@@ -27,10 +26,6 @@ Route::post('/game/{slug}/answer/{question}', [FrontGameSessionController::class
     ->withoutMiddleware(HandleInertiaRequests::class)
     ->middleware(HandleFrontInertiaRequests::class);
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
-
 Route::post('game-sessions/{game_session}/reset', [GameSessionController::class, 'reset'])->name('game-sessions.reset');
 
 Route::middleware('auth')->group(function () {
@@ -42,6 +37,10 @@ Route::middleware('auth')->group(function () {
     Route::post('game-sessions/{game_session}/question', [GameSessionController::class, 'nextQuestion'])->name('game-sessions.next-question');
     Route::post('game-sessions/{game_session}/answer/{answer}/confirm', [GameSessionController::class, 'confirmAnswer'])->name('game-sessions.confirm-answer');
     Route::resource('game-sessions', GameSessionController::class);
+
+    // Duplicate the route used to replace the 'dashboard' route
+    Route::get('dashboard', [GameSessionController::class, 'index'])->name('dashboard');
+
 });
 
 require __DIR__ . '/auth.php';

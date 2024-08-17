@@ -144,5 +144,4 @@ export class GameSession {
 
     return unansweredQuestions[0];
   }
-
 }
