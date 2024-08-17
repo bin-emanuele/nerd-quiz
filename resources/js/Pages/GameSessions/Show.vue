@@ -72,7 +72,7 @@ function questionSubmit () {
     text: questionForm.text
   })
     .then(({ data }) => {
-      console.log('questionSubmit', data)
+      questionForm.text = ''
     })
     .catch((error) => {
       console.error('Error', error)
@@ -138,18 +138,6 @@ onMounted(() => {
             <p class="mt-4 text-gray-500 dark:text-gray-400">
               {{ game_session.description }}
             </p>
-
-            <p class="mt-4 text-gray-500 dark:text-gray-400">
-              Max partecipants: {{ game_session.max_partecipants }}
-            </p>
-
-            <button
-              class="mt-4 px-4 py-2 bg-gray-700 text-white rounded-md"
-              type="button"
-              @click="resetGame"
-            >
-              Reset
-            </button>
           </div>
 
           <div
@@ -158,10 +146,10 @@ onMounted(() => {
               Current Question
             </h1>
 
+            <pre>{{  currentQuestion }}</pre>
             <template v-if="currentQuestion">
               <div class="flex items-center justify-between">
                 <div class="flex flex-col items center">
-                  <pre>{{ currentQuestion }}</pre>
                   <div class="text-lg font-bold">{{ currentQuestion.text }}</div>
                   <div class="text-sm text-gray-500">{{ currentQuestion.answers?.length || 0 }} answers</div>
                 </div>
@@ -188,7 +176,8 @@ onMounted(() => {
                 class="my-4"
               >
                 <Alert type="info">
-                  {{ currentQuestion.booked_by?.name }} has booked the question! Waiting for the partecipant to submit the
+                  {{ currentQuestion.booked_by?.name }} has booked the question! Waiting for the partecipant to submit
+                  the
                   answer.
                 </Alert>
               </div>
@@ -271,10 +260,20 @@ onMounted(() => {
           </div>
         </div>
 
-        <GameSessionPartecipants
-          :game_session="game_session"
-          :winning_answers_count="props.winning_answers_count"
-        />
+        <div class="flex flex-col">
+          <GameSessionPartecipants
+            :game_session="game_session"
+            :winning_answers_count="props.winning_answers_count"
+          />
+
+          <button
+            class="mt-4 px-4 py-2 bg-gray-700 text-white rounded-md w-full"
+            type="button"
+            @click="resetGame"
+          >
+            { } Debug Reset
+          </button>
+        </div>
       </div>
     </div>
   </AuthenticatedLayout>

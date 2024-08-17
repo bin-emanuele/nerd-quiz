@@ -43,7 +43,7 @@ const maxAnswersAvailable = computed(() => {
 </script>
 
 <template>
-  <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+  <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg min-h-[40vh] max-h-[80vh]">
     <div class="px-8 py-8 text-gray-900 dark:text-gray-100">
       <h3 class="relative mb-3 text-3xl font-bold leading-none tracking-tight text-gray-900 dark:text-white">
         Partecipants

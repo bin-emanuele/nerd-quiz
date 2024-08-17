@@ -31,7 +31,7 @@ const isAdmin = computed(() => {
       <div class="flex items-center justify-between">
         <div class="flex flex-col items center">
           <div class="text-lg font-bold">{{ question.text }}</div>
-          <div class="text-sm text-gray-500">{{ question.answers.length }} answers</div>
+          <div class="text-sm text-gray-500">{{ question.answers.length || 'No' }} answers</div>
         </div>
 
         <div v-if="question.closed_at" class="text-sm text-gray-500">Closed at: {{ question.closed_at.toLocaleString() }}</div>

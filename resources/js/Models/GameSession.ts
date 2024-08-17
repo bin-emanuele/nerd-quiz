@@ -120,7 +120,20 @@ export class GameSession {
       })
       .listen('GameSession\\AnswerResult', ({ answer, game_session }: { answer: Answer, game_session: GameSession }) => {
         console.log('Answer result', answer);
+        if (!this.currentQuestion) {
+          throw new Error('No current question');
+        }
+
+        const answerIndex = this.currentQuestion.answers.findIndex(a => a.id === answer.id);
+        if (answerIndex !== -1) {
+          this.currentQuestion.answers[answerIndex] = answer;
+        } else {
+          this.currentQuestion.answers.push(answer);
+        }
+
+        this.currentQuestion.closed_at = answer.question.closed_at;
         this.partecipants = game_session.partecipants;
+
       })
       .listen('GameSession\\GameOver', ({ game_session }: { game_session: GameSession }) => {
         console.log('Game over', game_session.status);

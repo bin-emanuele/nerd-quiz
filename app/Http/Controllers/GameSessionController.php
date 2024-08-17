@@ -101,6 +101,12 @@ class GameSessionController extends Controller
             $question->delete();
         });
 
+        $game_session->partecipants()->each(function ($partecipant) {
+            $partecipant->answers_available = config('app.game.answers_available');
+            $partecipant->answers_correct   = 0;
+            $partecipant->save();
+        });
+
         ResetGame::dispatch($game_session);
 
         return response()->json(['message' => 'Game session resetted!', 'game_session' => $game_session->refresh()->load('partecipants', 'questions', 'questions.answers', 'questions.answers.partecipant', 'questions.booked_by')]);
@@ -157,8 +163,6 @@ class GameSessionController extends Controller
             'expires_at' => now(),
         ]);
 
-        AnswerResult::dispatch($answer);
-
         if ($request->input('is_correct')) {
             $answer->partecipant->increment('answers_correct');
             $status = $answer->partecipant->answers_correct >= config('app.game.winning_answers_count') ? 'game-over' : 'writing-question';
@@ -169,6 +173,8 @@ class GameSessionController extends Controller
                 'booked_by_id' => null,
                 'closed_at'    => now(),
             ]);
+
+            AnswerResult::dispatch($answer);
 
             if ($status === 'game-over') {
                 $game_session->ended_at = now();
@@ -188,6 +194,8 @@ class GameSessionController extends Controller
                 'booked_by_id' => null,
                 'expires_at'   => now()->addSeconds(config('app.game.retry_question_expires_in')),
             ]);
+
+            AnswerResult::dispatch($answer);
 
             NextQuestion::dispatch($game_session, $answer->question);
             QuestionTimeoutJob::dispatch($game_session, $answer->question)->delay($answer->question->expires_at);

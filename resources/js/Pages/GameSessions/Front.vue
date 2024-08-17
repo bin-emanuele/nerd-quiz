@@ -58,6 +58,11 @@ const answerResult = ref<Answer | null>(null);
 
 function connect () {
   game_session.connect()
+  .listen('GameSession\\CheckingAnswer', (data: { answer: Answer, game_session: GameSession }) => {
+    console.log('Answer result', data.answer);
+        latestAnswer.value = data.answer;
+        answerResult.value = null;
+      })
   .listen('GameSession\\AnswerResult', (data: { answer: Answer, game_session: GameSession }) => {
     console.log('Answer result', data.answer);
         latestAnswer.value = null;
@@ -129,7 +134,7 @@ function answerSubmit() {
   <GuestLayout>
     <Head :title="`Game Session - ${game_session.title}`"></Head>
 
-    <div class="py-12 h-[80vh]">
+    <div class="py-12 min-h-[80vh]">
       <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="md:col-span-2">
           <div
@@ -144,16 +149,6 @@ function answerSubmit() {
             <p class="mt-4 text-gray-500 dark:text-gray-400">
               {{ game_session.description }}
             </p>
-
-            <p class="mt-4 text-gray-500 dark:text-gray-400">
-              Max partecipants: {{ game_session.max_partecipants }}
-            </p>
-
-            <div class="flex mt-3 justify-end">
-              <button @click="leaveGame" class="text-white inline-flex items-center bg-red-700 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-800">
-                Exit Game
-              </button>
-            </div>
           </div>
 
           <div
@@ -266,10 +261,17 @@ function answerSubmit() {
           </div>
         </div>
 
-        <GameSessionPartecipants
-          :game_session="game_session"
-          :winning_answers_count="winning_answers_count"
-        />
+        <div class="flex flex-col">
+          <GameSessionPartecipants
+            :game_session="game_session"
+            :winning_answers_count="winning_answers_count"
+          />
+
+          <button @click="leaveGame" class="text-white text-center bg-red-700 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-800 my-3">
+            Exit Game
+          </button>
+        </div>
+
       </div>
     </div>
 
