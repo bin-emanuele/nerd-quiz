@@ -139,7 +139,13 @@ export class GameSession {
         console.log('Game over', game_session.status);
         this.status = game_session.status;
       })
+  }
 
+  disconnect () {
+    if (this.echo) {
+      this.echo.leave(`game-session.${this.slug}`);
+      this.echo.disconnect();
+    }
   }
 
   get closedQuestions () {

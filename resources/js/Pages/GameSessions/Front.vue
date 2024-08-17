@@ -46,7 +46,9 @@ function getRandomAmazingName () {
 }
 
 const name = ref(getRandomAmazingName());
-const joinModalErrors = ref({});
+const joinModalErrors = reactive({
+  name: '',
+});
 const joinModalShow = ref(!props.auth.user);
 
 const currentQuestion = computed<Question>(() => {
@@ -80,7 +82,8 @@ function onPartecipantJoin () {
       connect();
     },
     onError: (errors) => {
-      joinModalErrors.value = errors;
+      console.log('Error joining', errors);
+      joinModalErrors.name = errors.name;
     },
   })
 }
@@ -99,7 +102,7 @@ onMounted(() => {
 });
 
 function leaveGame () {
-  Echo.leave(`game-session.${game_session.slug}`);
+  game_session.disconnect();
   router.post(`/game/${game_session.slug}/leave`);
 }
 
@@ -257,15 +260,12 @@ function answerSubmit() {
               Previous Questions
             </h1>
 
-            <GameSessionQuestionList :game_session="game_session" :partecipant="partecipant" />
+            <GameSessionQuestionList :game_session="(game_session as GameSession)" :partecipant="partecipant" />
           </div>
         </div>
 
         <div class="flex flex-col">
-          <GameSessionPartecipants
-            :game_session="game_session"
-            :winning_answers_count="winning_answers_count"
-          />
+          <GameSessionPartecipants :game_session="(game_session as GameSession)" :winning_answers_count="winning_answers_count" />
 
           <button @click="leaveGame" class="text-white text-center bg-red-700 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-800 my-3">
             Exit Game
@@ -306,7 +306,7 @@ function answerSubmit() {
                 class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                 placeholder="Insert your nickname"
               >
-              <div v-for="message in joinModalErrors.name" class="text-red-500 text-sm mt-1">{{ message }}</div>
+              <div class="text-red-500 text-sm mt-1">{{ joinModalErrors.name }}</div>
             </div>
           </div>
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, reactive, PropType } from 'vue'
+import { computed, PropType } from 'vue'
 import { GameSession } from '../../Models/GameSession';
+import { Partecipant } from '../../Models/Partecipant';
 
 const { game_session, winning_answers_count } = defineProps({
   game_session: {
@@ -32,7 +33,7 @@ const sortedPartecipants = computed(() => {
   }) || [];
 });
 
-const isConnected = computed(() => (partecipant) => {
+const isConnected = computed(() => (partecipant: Partecipant) => {
   return game_session.online_partecipants.includes(partecipant.id);
 });
 

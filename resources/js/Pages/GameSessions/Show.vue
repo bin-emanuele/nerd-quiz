@@ -39,7 +39,7 @@ const latestAnswer = computed(() => {
 });
 
 function leaveGame () {
-  Echo.leave(`game-session.${game_session.slug}`);
+  game_session.disconnect()
   router.post(`/game/${game_session.slug}/leave`);
 }
 
