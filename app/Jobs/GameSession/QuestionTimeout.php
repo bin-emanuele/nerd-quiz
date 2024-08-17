@@ -40,6 +40,10 @@ class QuestionTimeout implements ShouldQueue
             'status' => 'writing-question',
         ]);
 
+        $this->question->update([
+            'closed_at' => now(),
+        ]);
+
         broadcast(new QuestionTimeoutEvent($this->game_session, $this->question));
     }
 }

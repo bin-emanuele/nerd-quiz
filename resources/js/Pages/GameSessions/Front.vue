@@ -33,7 +33,7 @@ const props = defineProps({
   },
 });
 
-const game_session = reactive(new GameSession(props.game_session));
+const game_session = reactive<GameSession>(new GameSession(props.game_session));
 const game_status = computed(() => {
   return game_session.status;
 });
@@ -49,12 +49,12 @@ const name = ref(getRandomAmazingName());
 const joinModalErrors = ref({});
 const joinModalShow = ref(!props.auth.user);
 
-const currentQuestion = computed(() => {
-  return game_session.currentQuestion;
+const currentQuestion = computed<Question>(() => {
+  return game_session.currentQuestion as Question;
 });
 
-const latestAnswer = ref(null);
-const answerResult = ref(null);
+const latestAnswer = ref<Answer | null>(null);
+const answerResult = ref<Answer | null>(null);
 
 function connect () {
   game_session.connect()
@@ -85,11 +85,11 @@ onMounted(() => {
     connect();
   }
 
-  if (currentQuestion.value) {
-    const answers = currentQuestion.value?.answers?.sort((a: Answer, b: Answer) => {
+  if (currentQuestion.value?.answers?.length) {
+    const answers = currentQuestion.value.answers.sort((a: Answer, b: Answer) => {
       return (a.answered_at?.getTime() || 0) - (b.answered_at?.getTime() || 0)
     });
-    latestAnswer.value = answers?.length ? answers[0] : {};
+    latestAnswer.value = answers?.length ? answers[0] : null;
   }
 });
 
@@ -129,7 +129,7 @@ function answerSubmit() {
   <GuestLayout>
     <Head :title="`Game Session - ${game_session.title}`"></Head>
 
-    <div class="py-12">
+    <div class="py-12 h-[80vh]">
       <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="md:col-span-2">
           <div
@@ -173,7 +173,7 @@ function answerSubmit() {
               </div>
 
               <div class="w-32 flex justify-end">
-                <Countdown v-if="game_status == 'waiting-booking'" :ends_at="currentQuestion.expires_at" />
+                <Countdown v-if="game_status == 'waiting-booking' && currentQuestion.expires_at" :ends_at="currentQuestion.expires_at" />
                 <span v-if="game_status == 'answer-booked'" class="text">Booked!</span>
               </div>
             </div>
@@ -182,14 +182,14 @@ function answerSubmit() {
               <template v-if="!answerResult && latestAnswer">
                 <p class="italic text-lg mb-3">> {{ latestAnswer.text }}</p>
                 <Alert
-                  v-if="latestAnswer?.partecipant?.id != partecipant.id"
+                  v-if="latestAnswer?.partecipant?.id != partecipant?.id"
                   type="success"
                 >
                   The host is checking the answer of {{ latestAnswer?.partecipant?.name }}. Please wait.
                 </Alert>
 
                 <Alert
-                  v-if="latestAnswer?.partecipant?.id == partecipant.id"
+                  v-if="latestAnswer?.partecipant?.id == partecipant?.id"
                   type="success"
                 >
                   The host is checking your answer. Please wait.
@@ -211,7 +211,7 @@ function answerSubmit() {
             </p>
 
             <p
-              v-if="['answer-booked'].includes(game_status) && currentQuestion.booked_by.id != partecipant.id"
+              v-if="['answer-booked'].includes(game_status) && currentQuestion.booked_by_id != partecipant?.id"
               class="text-md dark:text-gray-400"
             >
               {{ currentQuestion.booked_by?.name }} was faster an booked the question. Please wait for the answer!
@@ -227,7 +227,7 @@ function answerSubmit() {
             </button>
 
             <div
-              v-if="['answer-booked'].includes(game_status) && currentQuestion.booked_by.id == partecipant.id"
+              v-if="['answer-booked'].includes(game_status) && currentQuestion.booked_by_id == partecipant?.id"
               class="px-4 py-4 dark:bg-blue-700 shadow-sm sm:rounded-lg mb-4"
             >
               <label
@@ -255,7 +255,7 @@ function answerSubmit() {
           </div>
 
           <div
-            v-if="game_session.questions.length > 1"
+            v-if="game_session.closedQuestions?.length"
             class="px-8 py-8 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-4"
           >
             <h1 class="mb-4 text-4xl font-extrabold leading-none tracking-tight text-gray-900 dark:text-white">
@@ -303,7 +303,6 @@ function answerSubmit() {
                 id="name"
                 class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                 placeholder="Insert your nickname"
-                required=""
               >
               <div v-for="message in joinModalErrors.name" class="text-red-500 text-sm mt-1">{{ message }}</div>
             </div>

@@ -35,7 +35,7 @@ const submit = () => {
             {{ status }}
         </div>
 
-        <div class="flex w-full h-full min-h-[30h] justify-center items-center">
+        <div class="flex w-full h-full max-h-[500px] justify-center items-center">
           <div class="w-full max-w-96">
             <form @submit.prevent="submit">
                 <div>

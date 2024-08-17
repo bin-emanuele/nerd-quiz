@@ -17,8 +17,9 @@ return new class extends Migration
             $table->foreignId('game_session_id')->constrained();
             $table->foreignId('booked_by_id')->nullable()->constrained('partecipants', 'id');
             $table->string('text');
+
+            $table->dateTime('closed_at')->nullable();
             $table->dateTime('expires_at');
-            $table->dateTime('answered_at')->nullable();
 
             $table->timestamps();
         });

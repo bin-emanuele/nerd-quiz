@@ -10,7 +10,7 @@ export class Question {
   booked_by_id: number | null;
   booked_by: Partecipant | null;
   answers: Answer[];
-  answered_at?: Date;
+  closed_at?: Date;
   expires_at?: Date;
   created_at: Date;
   updated_at?: Date;
@@ -23,10 +23,10 @@ export class Question {
     this.booked_by_id = data.booked_by_id || null;
     this.booked_by = data.booked_by ? new Partecipant(data.booked_by) : null;
     this.answers = data.answers || [];
-    this.answered_at = data?.answered_at;
-    this.expires_at = data?.expires_at;
+    this.closed_at = data?.closed_at ? new Date(data.closed_at) : undefined;
+    this.expires_at = data?.expires_at ? new Date(data.expires_at) : undefined;
+    this.updated_at = data?.updated_at ? new Date(data.updated_at) : undefined;
     this.created_at = data.created_at || new Date();
-    this.updated_at = data?.updated_at;
   }
 
 }

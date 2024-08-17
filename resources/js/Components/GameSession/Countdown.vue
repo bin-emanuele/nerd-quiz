@@ -3,17 +3,16 @@ import { ref, computed, onMounted, onUnmounted, watchEffect } from 'vue'
 
 const { ends_at } = defineProps({
   ends_at: {
-    type: String,
+    type: Date,
     required: true,
   },
 });
 
 const now = ref(new Date());
-const date_ends_at = new Date(ends_at);
 let interval: number | null = null;
 
 const countdown = computed(() => {
-  const diff = Math.max(Math.floor((date_ends_at.getTime() - now.value.getTime()) / 1000), 0);
+  const diff = Math.max(Math.floor((ends_at.getTime() - now.value.getTime()) / 1000), 0);
 
   if (diff === 0) {
     return 'Expired';
@@ -23,8 +22,8 @@ const countdown = computed(() => {
 });
 
 onMounted(() => {
-  if (date_ends_at <= new Date()) {
-    console.log('Date already passed', date_ends_at.getTime(), new Date().getTime());
+  if (ends_at <= new Date()) {
+    console.log('Date already passed', ends_at.getTime(), new Date().getTime());
     return;
   }
 
@@ -40,7 +39,7 @@ onUnmounted(() => {
 });
 
 watchEffect(() => {
-  if (date_ends_at > new Date()) {
+  if (ends_at > new Date()) {
     return;
   }
 

@@ -57,9 +57,18 @@ function gotoSession (id) {
 
           <h1
             v-else
-            class="mb-4 text-4xl font-extrabold leading-none tracking-tight text-gray-900 md:text-3xl lg:text-4xl dark:text-white"
+            class="px-12 py-8 text-4xl font-extrabold leading-none tracking-tight text-gray-900 md:text-3xl lg:text-4xl dark:text-white"
           >There are no active games</h1>
+
+          <div class="px-12 mb-8 mt-4">
+            <button
+              class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+              type="button"
+              @click="router.get('/game-sessions/create')"
+            >Create Game</button>
+          </div>
         </div>
+
       </div>
     </div>
   </AuthenticatedLayout>

@@ -14,8 +14,8 @@ class Question extends Model
     protected $guarded = ['id', 'created_at'];
 
     protected $casts = [
-        'expires_at'  => 'datetime',
-        'answered_at' => 'datetime',
+        'expires_at' => 'datetime',
+        'closed_at'  => 'datetime',
     ];
 
     /**

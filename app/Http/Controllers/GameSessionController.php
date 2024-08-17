@@ -167,7 +167,7 @@ class GameSessionController extends Controller
 
             $answer->question->update([
                 'booked_by_id' => null,
-                'answered_at'  => now(),
+                'closed_at'    => now(),
             ]);
 
             if ($status === 'game-over') {

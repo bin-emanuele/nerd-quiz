@@ -84,8 +84,8 @@ export class GameSession {
       .listen('GameSession\\ResetGame', ({ game_session }: { game_session: GameSession }) => {
         console.log('Writing question', game_session.status);
         this.status = game_session.status
-        this.partecipants = game_session.partecipants
-        this.questions = game_session.questions
+        this.partecipants = game_session.partecipants || [];
+        this.questions = game_session.questions.map(q => new Question(q))
       })
       .listen('GameSession\\WritingQuestion', ({ game_session }: { game_session: GameSession }) => {
         console.log('Writing question', game_session.status);
@@ -93,17 +93,17 @@ export class GameSession {
       })
       .listen('GameSession\\NextQuestion', ({ game_session, question }: { game_session: GameSession, question: Question }) => {
         console.log('New question', question);
-        this.questions.push(question);
+        this.questions.push(new Question(question));
         this.status = game_session.status;
       })
       .listen('GameSession\\QuestionTimeout', ({ game_session, question }: { game_session: GameSession, question: Question }) => {
         console.log('Question timeout', question);
-        this.questions.push(question);
+        this.questions.splice(this.questions.findIndex((q) => q.id === question.id), 1, new Question(question));
         this.status = game_session.status;
       })
       .listen('GameSession\\BookedQuestion', ({ game_session, question }: { game_session: GameSession, question: Question }) => {
         console.log('Booked question', question);
-        this.questions.splice(this.questions.findIndex((q) => q.id === question.id), 1, question);
+        this.questions.splice(this.questions.findIndex((q) => q.id === question.id), 1, new Question(question));
         this.status = game_session.status;
       })
       .listen('GameSession\\CheckingAnswer', ({ answer }: { answer: Answer }) => {
@@ -129,19 +129,19 @@ export class GameSession {
 
   }
 
-  get answeredQuestions () {
-    return this.questions.filter(q => q.answered_at);
+  get closedQuestions () {
+    return this.questions.filter(q => !!q.closed_at);
   }
 
   get currentQuestion () {
-    const unansweredQuestions = this.questions
-      .filter(q => !q.answered_at)
+    const openQuestions = this.questions
+      .filter(q => !q.closed_at)
       .sort((a, b) => a.created_at < b.created_at ? 1 : -1);
 
-    if (!unansweredQuestions?.length) {
+    if (!openQuestions?.length) {
       return null;
     }
 
-    return unansweredQuestions[0];
+    return openQuestions[0];
   }
 }

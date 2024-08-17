@@ -2,7 +2,6 @@
 import { computed, reactive, PropType } from 'vue'
 import { GameSession } from '../../Models/GameSession'
 import { Partecipant } from '../../Models/Partecipant'
-import Countdown from './Countdown.vue'
 import Alert from '../../Components/Alert.vue'
 
 const { game_session, partecipant } = defineProps({
@@ -28,14 +27,14 @@ const isAdmin = computed(() => {
   </Alert>
 
   <div class="flex flex-col">
-    <div v-for="question in game_session.answeredQuestions" class="flex flex-col w-full mb-4">
+    <div v-for="question in game_session.closedQuestions" class="flex flex-col w-full mb-4">
       <div class="flex items-center justify-between">
         <div class="flex flex-col items center">
           <div class="text-lg font-bold">{{ question.text }}</div>
           <div class="text-sm text-gray-500">{{ question.answers.length }} answers</div>
         </div>
 
-        <div class="text-sm text-gray-500">Correct answer: {{ question.answered_at }}</div>
+        <div v-if="question.closed_at" class="text-sm text-gray-500">Closed at: {{ question.closed_at.toLocaleString() }}</div>
       </div>
 
       <div v-if="question.answers?.length > 0" class="flex flex-col pl-4">

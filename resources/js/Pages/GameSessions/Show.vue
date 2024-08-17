@@ -161,11 +161,12 @@ onMounted(() => {
             <template v-if="currentQuestion">
               <div class="flex items-center justify-between">
                 <div class="flex flex-col items center">
+                  <pre>{{ currentQuestion }}</pre>
                   <div class="text-lg font-bold">{{ currentQuestion.text }}</div>
                   <div class="text-sm text-gray-500">{{ currentQuestion.answers?.length || 0 }} answers</div>
                 </div>
                 <div
-                  v-if="!currentQuestion.answered_at"
+                  v-if="!currentQuestion.closed_at"
                   class="flex items-center"
                 >
                   <Countdown
@@ -180,7 +181,7 @@ onMounted(() => {
                 <div
                   v-else
                   class="text-sm text-gray-500"
-                >Correct answer: {{ currentQuestion.answered_at }}</div>
+                >Closed at: {{ currentQuestion.closed_at }}</div>
               </div>
               <div
                 v-if="game_session.status == 'answer-booked'"
@@ -260,7 +261,7 @@ onMounted(() => {
           </div>
 
           <div
-            v-if="game_session.questions?.length > 1"
+            v-if="game_session.closedQuestions?.length"
             class="px-8 py-8 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-4"
           >
             <h1 class="mb-4 text-4xl font-extrabold leading-none tracking-tight text-gray-900 dark:text-white">
