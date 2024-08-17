@@ -10,12 +10,14 @@ npm run build
 
 ssh $SERVER_USER@$SERVER_HOST "rm -rf $SERVER_DIR/*"
 
+scp .env $SERVER_USER@$SERVER_HOST:$SERVER_DIR
 scp -r $LOCAL_BUILD_DIR/* $SERVER_USER@$SERVER_HOST:$SERVER_DIR
 
 ssh $SERVER_USER@$SERVER_HOST << EOF
   cd $SERVER_DIR
   git pull
-  php artisan deploy
+  composer install
+  composer deploy
 EOF
 
 echo "Deployment completed!"
