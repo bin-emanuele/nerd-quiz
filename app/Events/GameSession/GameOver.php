@@ -31,6 +31,7 @@ class GameOver implements ShouldBroadcastNow
     {
         return [
             'game_session' => $this->game_session,
+            'winner'       => $this->game_session->partecipants->sortByDesc('answers_correct')->first(),
         ];
     }
 

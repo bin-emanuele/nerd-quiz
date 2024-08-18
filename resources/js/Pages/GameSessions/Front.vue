@@ -91,12 +91,11 @@ function connect () {
         answerResult.value = null;
       }, 10000);
     })
-    .listen('GameSession\\GameOver', (data: { game_session: GameSession }) => {
+    .listen('GameSession\\GameOver', (data: { game_session: GameSession, winner: Partecipant }) => {
       console.log('Game over', data.game_session);
       confetti();
 
-      const winner = game_session.partecipants.sort((a, b) => b.answers_correct - a.answers_correct)[0];
-      alert(`Game over! The winner is ${winner.name} with ${winner.answers_correct} correct answers!`);
+      alert(`Game over! The winner is ${data.winner.name} with ${data.winner.answers_correct} correct answers!`);
     });
 }
 
