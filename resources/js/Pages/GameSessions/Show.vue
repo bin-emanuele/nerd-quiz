@@ -99,7 +99,7 @@ function confirmAnswer (isCorrect) {
 function resetGame () {
   axios.post(route('game-sessions.reset', game_session.id), {})
     .then(({ data }) => {
-      console.log('resetGame', data)
+      console.log('POST ResetGame', data)
     })
     .catch((error) => {
       console.error('Error', error.message)

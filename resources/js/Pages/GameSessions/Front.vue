@@ -96,6 +96,7 @@ function connect () {
       confetti();
 
       const winner = game_session.partecipants.sort((a, b) => b.answers_correct - a.answers_correct)[0];
+      alert(`Game over! The winner is ${winner.name} with ${winner.answers_correct} correct answers!`);
     });
 }
 

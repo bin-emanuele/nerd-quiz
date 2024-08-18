@@ -2,7 +2,6 @@
 
 namespace App\Events\GameSession;
 
-use App\Models\Answer;
 use App\Models\GameSession;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PresenceChannel;
@@ -17,10 +16,8 @@ class ResetGame implements ShouldBroadcastNow
     /**
      * Create a new event instance.
      */
-    public function __construct(
-        private GameSession $game_session,
-    ) {
-        //
+    public function __construct(private GameSession $game_session)
+    {
     }
 
     /**
@@ -30,9 +27,7 @@ class ResetGame implements ShouldBroadcastNow
      */
     public function broadcastWith(): array
     {
-        return [
-            'game_session' => $this->game_session->load('partecipants', 'questions', 'questions.answers', 'questions.answers.partecipant', 'questions.booked_by'),
-        ];
+        return [];
     }
 
     /**

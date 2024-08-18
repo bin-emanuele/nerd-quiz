@@ -40,6 +40,13 @@ class FrontGameSessionController extends Controller
         ]);
     }
 
+    function data(string $slug)
+    {
+        $game_session = GameSession::with('partecipants', 'questions', 'questions.answers', 'questions.answers.partecipant', 'questions.booked_by')->where('slug', $slug)->firstOrFail();
+
+        return response()->json(compact('game_session'));
+    }
+
     function join(string $slug, Request $request)
     {
         $game_session = GameSession::with('partecipants')->where('slug', $slug)->firstOrFail();

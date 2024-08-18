@@ -31,7 +31,7 @@ class AnswerResult implements ShouldBroadcastNow
     {
         return [
             'answer'       => $this->answer->load('question', 'partecipant'),
-            'game_session' => $this->answer->question->game_session->load('partecipants'),
+            'game_session' => $this->answer->question->game_session,
         ];
     }
 

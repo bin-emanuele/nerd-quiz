@@ -3,6 +3,7 @@ import { PresenceChannel } from "laravel-echo/dist/channel";
 import { Partecipant } from "./Partecipant";
 import { Question } from "./Question";
 import { Answer } from "./Answer";
+import axios from "axios";
 
 export class GameSession {
   id: number;
@@ -81,11 +82,9 @@ export class GameSession {
 
         this.online_partecipants = this.online_partecipants.filter(id => id !== partecipant.id);
       })
-      .listen('GameSession\\ResetGame', ({ game_session }: { game_session: GameSession }) => {
-        console.log('Writing question', game_session.status);
-        this.status = game_session.status
-        this.partecipants = game_session.partecipants || [];
-        this.questions = game_session.questions.map(q => new Question(q))
+      .listen('GameSession\\ResetGame', () => {
+        console.log('Resetting game');
+        this.reloadSession();
       })
       .listen('GameSession\\WritingQuestion', ({ game_session }: { game_session: GameSession }) => {
         console.log('Writing question', game_session.status);
@@ -138,7 +137,7 @@ export class GameSession {
         }
 
         this.currentQuestion.closed_at = answer.question.closed_at;
-        this.partecipants = game_session.partecipants;
+        this.reloadSession();
       })
       .listen('GameSession\\GameOver', ({ game_session }: { game_session: GameSession }) => {
         console.log('Game over', game_session.status);
@@ -151,6 +150,14 @@ export class GameSession {
       this.echo.leave(`game-session.${this.slug}`);
       this.echo.disconnect();
     }
+  }
+
+  async reloadSession () {
+    const { data } = await axios.get(`/game/${this.slug}/data`);
+    console.log('Reloading session', data.game_session);
+    this.status = data.game_session.status;
+    this.questions = data.game_session.questions.map((q: any) => new Question(q));
+    this.partecipants = data.game_session.partecipants.map((p: any) => new Partecipant(p));
   }
 
   get closedQuestions () {
