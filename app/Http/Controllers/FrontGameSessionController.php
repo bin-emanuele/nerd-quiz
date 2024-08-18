@@ -55,7 +55,7 @@ class FrontGameSessionController extends Controller
             return redirect()->back()->withErrors(['This name has already been taken!'], 'name');
         }
 
-        if ($game_session->status !== 'waiting-partecipants') {
+        if (!in_array($game_session->status, ['waiting-partecipants', 'writing-question'])) {
             return redirect()->back()->withErrors(['This game session is not accepting new partecipants!'], 'name');
         }
 

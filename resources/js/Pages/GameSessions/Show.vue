@@ -27,7 +27,6 @@ const props = defineProps({
 })
 
 const game_session = reactive(new GameSession(props.game_session))
-const partecipants = reactive([...game_session.partecipants || []])
 
 const currentQuestion = computed(() => {
   return game_session.currentQuestion
@@ -115,7 +114,6 @@ onMounted(() => {
 </script>
 
 <template>
-
   <Head :title="`Game Session - ${game_session.title}`" />
 
   <AuthenticatedLayout>
@@ -146,7 +144,9 @@ onMounted(() => {
               Current Question
             </h1>
 
-            <pre>{{  currentQuestion }}</pre>
+          <pre class="hidden">{{ currentQuestion?.answers.length }}</pre>
+          <pre class="hidden">{{ currentQuestion?.closed_at }}</pre>
+
             <template v-if="currentQuestion">
               <div class="flex items-center justify-between">
                 <div class="flex flex-col items center">

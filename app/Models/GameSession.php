@@ -38,7 +38,7 @@ class GameSession extends Model
      */
     public function scopeJoinable(Builder $query): Builder
     {
-        return $query->whereIn('status', ['waiting-partecipants']);
+        return $query->whereIn('status', ['waiting-partecipants', 'writing-question']);
     }
 
     public function scopeBySlug(Builder $query, string $slug): Builder

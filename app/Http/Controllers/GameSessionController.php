@@ -14,6 +14,7 @@ use App\Jobs\GameSession\QuestionTimeout as QuestionTimeoutJob;
 use App\Models\Answer;
 use App\Models\GameSession;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 

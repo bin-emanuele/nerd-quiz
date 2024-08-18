@@ -93,7 +93,13 @@ export class GameSession {
       })
       .listen('GameSession\\NextQuestion', ({ game_session, question }: { game_session: GameSession, question: Question }) => {
         console.log('New question', question);
-        this.questions.push(new Question(question));
+
+        const questionIndex = this.questions.findIndex((q) => q.id === question.id);
+        if (questionIndex !== -1) {
+          this.questions.splice(questionIndex, 1, new Question(question));
+        } else {
+          this.questions.push(new Question(question));
+        }
         this.status = game_session.status;
       })
       .listen('GameSession\\QuestionTimeout', ({ game_session, question }: { game_session: GameSession, question: Question }) => {
@@ -133,7 +139,6 @@ export class GameSession {
 
         this.currentQuestion.closed_at = answer.question.closed_at;
         this.partecipants = game_session.partecipants;
-
       })
       .listen('GameSession\\GameOver', ({ game_session }: { game_session: GameSession }) => {
         console.log('Game over', game_session.status);

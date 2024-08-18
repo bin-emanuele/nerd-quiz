@@ -10,6 +10,7 @@ import InputError from '@/Components/InputError.vue';
 import GuestLayout from '@/Layouts/GuestLayout.vue';
 import { ref, reactive, computed, PropType } from 'vue';
 import axios from 'axios';
+import confetti from 'canvas-confetti';
 import { onMounted } from 'vue'
 import { GameSession } from '@/Models/GameSession';
 import { Question } from '@/Models/Question';
@@ -33,6 +34,7 @@ const props = defineProps({
   },
 });
 
+const partecipant = reactive<Partecipant>(new Partecipant(props.partecipant));
 const game_session = reactive<GameSession>(new GameSession(props.game_session));
 const game_status = computed(() => {
   return game_session.status;
@@ -60,30 +62,53 @@ const answerResult = ref<Answer | null>(null);
 
 function connect () {
   game_session.connect()
-  .listen('GameSession\\CheckingAnswer', (data: { answer: Answer, game_session: GameSession }) => {
-    console.log('Answer result', data.answer);
-        latestAnswer.value = data.answer;
+    .listen('GameSession\\ResetGame', (data: { answer: Answer, game_session: GameSession }) => {
+      console.log('Reset game', data.answer);
+      partecipant.answers_available = 1;
+      partecipant.answers_correct = 0;
+    })
+    .listen('GameSession\\CheckingAnswer', (data: { answer: Answer, game_session: GameSession }) => {
+      console.log('Answer result', data.answer);
+      latestAnswer.value = data.answer;
+      answerResult.value = null;
+    })
+    .listen('GameSession\\AnswerResult', (data: { answer: Answer, game_session: GameSession }) => {
+      console.log('Answer result', data.answer);
+      latestAnswer.value = null;
+      answerResult.value = data.answer;
+
+      if (data.answer.partecipant.id == partecipant.id) {
+        partecipant.answers_available = data.answer.partecipant.answers_available;
+        partecipant.answers_correct = data.answer.partecipant.answers_correct;
+        console.log('Partecipant', partecipant);
+      }
+
+      if (answerResult.value.is_correct && answerResult.value.partecipant.id === partecipant.id) {
+        confetti();
+      }
+
+      setTimeout(() => {
         answerResult.value = null;
-      })
-  .listen('GameSession\\AnswerResult', (data: { answer: Answer, game_session: GameSession }) => {
-    console.log('Answer result', data.answer);
-        latestAnswer.value = null;
-        answerResult.value = data.answer;
-        setTimeout(() => {
-          answerResult.value = null;
-        }, 10000);
-      });
+      }, 10000);
+    })
+    .listen('GameSession\\GameOver', (data: { game_session: GameSession }) => {
+      console.log('Game over', data.game_session);
+      confetti();
+
+      const winner = game_session.partecipants.sort((a, b) => b.answers_correct - a.answers_correct)[0];
+    });
 }
 
 function onPartecipantJoin () {
   router.post(`/game/${game_session.slug}/join`, { name: name.value }, {
-    onSuccess: (response) => {
+    onSuccess: (response: any) => {
       joinModalShow.value = false;
+      Object.assign(partecipant, response.partecipant);
       connect();
     },
     onError: (errors) => {
       console.log('Error joining', errors);
-      joinModalErrors.name = errors.name;
+      joinModalErrors.name = errors.name[0];
     },
   })
 }
@@ -107,7 +132,7 @@ function leaveGame () {
 }
 
 function bookQuestion () {
-  axios.post(route('game-sessions.front.book', [ game_session.slug, currentQuestion.value.id ]), {})
+  axios.post(route('game-sessions.front.book', [game_session.slug, currentQuestion.value.id]), {})
     .then(({ data }) => {
       console.log('Question booked', data);
     })
@@ -119,8 +144,8 @@ function bookQuestion () {
 
 const answerText = ref('');
 const answerErrors = ref([]);
-function answerSubmit() {
-  axios.post(route('game-sessions.front.answer', [ game_session.slug, currentQuestion.value.id ]), { answer: answerText.value })
+function answerSubmit () {
+  axios.post(route('game-sessions.front.answer', [game_session.slug, currentQuestion.value.id]), { answer: answerText.value })
     .then(({ data }) => {
       console.log('Answer submitted', data);
       answerText.value = '';
@@ -131,7 +156,7 @@ function answerSubmit() {
     });
 }
 
-</script> 
+</script>
 
 <template>
   <GuestLayout>
@@ -140,9 +165,7 @@ function answerSubmit() {
     <div class="py-12 min-h-[80vh]">
       <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="md:col-span-2">
-          <div
-            class="px-8 py-8 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-4"
-          >
+          <div class="px-8 py-8 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-4">
             <h1 class="relative mb-4 text-4xl font-extrabold leading-none tracking-tight text-gray-900 dark:text-white">
               {{ game_session.title }}
 
@@ -162,7 +185,7 @@ function answerSubmit() {
               Current Question
             </h1>
 
-            <div 
+            <div
               v-if="['waiting-booking', 'answer-booked', 'answer-check'].includes(game_status)"
               class="flex justify-between items-center bg-indigo-500 rounded-lg px-6 py-4"
             >
@@ -171,7 +194,10 @@ function answerSubmit() {
               </div>
 
               <div class="w-32 flex justify-end">
-                <Countdown v-if="game_status == 'waiting-booking' && currentQuestion.expires_at" :ends_at="currentQuestion.expires_at" />
+                <Countdown
+                  v-if="game_status == 'waiting-booking' && currentQuestion.expires_at"
+                  :ends_at="currentQuestion.expires_at"
+                />
                 <span v-if="game_status == 'answer-booked'" class="text">Booked!</span>
               </div>
             </div>
@@ -180,14 +206,14 @@ function answerSubmit() {
               <template v-if="!answerResult && latestAnswer">
                 <p class="italic text-lg mb-3">> {{ latestAnswer.text }}</p>
                 <Alert
-                  v-if="latestAnswer?.partecipant?.id != partecipant?.id"
+                  v-if="latestAnswer?.partecipant?.id != partecipant.id"
                   type="success"
                 >
                   The host is checking the answer of {{ latestAnswer?.partecipant?.name }}. Please wait.
                 </Alert>
 
                 <Alert
-                  v-if="latestAnswer?.partecipant?.id == partecipant?.id"
+                  v-if="latestAnswer?.partecipant?.id == partecipant.id"
                   type="success"
                 >
                   The host is checking your answer. Please wait.
@@ -195,37 +221,42 @@ function answerSubmit() {
               </template>
             </div>
 
-              
             <template v-if="!!answerResult">
-              <Alert v-if="answerResult.is_correct" type="success">Congratulations {{ answerResult.partecipant.name }} the answer is correct!</Alert>
-              <Alert v-else type="error">Wrong answer! {{ answerResult.partecipant.name }} you'll have better luck on the next question!</Alert>
+              <Alert v-if="answerResult.is_correct" type="success">
+                Congratulations {{ answerResult.partecipant.name }} the answer is correct!
+              </Alert>
+              <Alert v-else type="error">
+                Wrong answer! {{ answerResult.partecipant.name }} you'll have better luck on the next time!
+              </Alert>
             </template>
 
-            <p
-              v-if="['writing-question'].includes(game_status)"
-              class="text-md dark:text-gray-400"
-            >
+            <p v-if="['writing-question'].includes(game_status)" class="text-md dark:text-gray-400">
               The host is writing a new question. Please wait.
             </p>
 
             <p
-              v-if="['answer-booked'].includes(game_status) && currentQuestion.booked_by_id != partecipant?.id"
+              v-if="['answer-booked'].includes(game_status) && currentQuestion.booked_by_id != partecipant.id"
               class="text-md dark:text-gray-400"
             >
               {{ currentQuestion.booked_by?.name }} was faster an booked the question. Please wait for the answer!
             </p>
 
             <button
+              v-if="partecipant.answers_available > 0"
               class="text-white focus:ring-4 focus:outline-none focus:ring-blue-300 text-xl rounded-lg w-full py-4 text-center bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 my-4"
-              :class="{'cursor-not-allowed bg-gray-500 hover:bg-gray-500 dark:bg-gray-500 dark:hover:bg-gray-500 dark:focus:ring-gray' : !['waiting-booking'].includes(game_status)}"
+              :class="{ 'cursor-not-allowed bg-gray-500 hover:bg-gray-500 dark:bg-gray-500 dark:hover:bg-gray-500 dark:focus:ring-gray': !['waiting-booking'].includes(game_status) }"
               :disabled="!['waiting-booking'].includes(game_status)"
               @click="bookQuestion"
             >
               Request to answer the question
             </button>
 
+            <Alert v-else>
+              You have no more answers available!
+            </Alert>
+
             <div
-              v-if="['answer-booked'].includes(game_status) && currentQuestion.booked_by_id == partecipant?.id"
+              v-if="['answer-booked'].includes(game_status) && currentQuestion.booked_by_id == partecipant.id"
               class="px-4 py-4 dark:bg-blue-700 shadow-sm sm:rounded-lg mb-4"
             >
               <label
@@ -240,7 +271,10 @@ function answerSubmit() {
                 placeholder="Answer"
                 rows="3"
               ></textarea>
-              <InputError class="mt-2" :message="answerErrors" />
+              <InputError
+                class="mt-2"
+                :message="answerErrors"
+              />
 
               <button
                 type="button"
@@ -260,25 +294,37 @@ function answerSubmit() {
               Previous Questions
             </h1>
 
-            <GameSessionQuestionList :game_session="(game_session as GameSession)" :partecipant="partecipant" />
+            <GameSessionQuestionList
+              :game_session="(game_session as GameSession)"
+              :partecipant="(partecipant as Partecipant)"
+            />
           </div>
+
+          <Alert v-if="game_status == 'waiting-partecipants'">
+            Waiting for the game to start...
+          </Alert>
         </div>
 
         <div class="flex flex-col">
-          <GameSessionPartecipants :game_session="(game_session as GameSession)" :winning_answers_count="winning_answers_count" />
+          <GameSessionPartecipants
+            :game_session="(game_session as GameSession)"
+            :winning_answers_count="winning_answers_count"
+          />
 
-          <button @click="leaveGame" class="text-white text-center bg-red-700 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-800 my-3">
+          <button
+            class="text-white text-center bg-red-700 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-800 my-3"
+            @click="leaveGame"
+          >
             Exit Game
           </button>
         </div>
-
       </div>
     </div>
 
     <Modal
       :show="joinModalShow"
-      maxWidth="md"
       :closeable="false"
+      maxWidth="md"
     >
       <!-- Modal content -->
       <div class="relative rounded-lg">
@@ -299,8 +345,8 @@ function answerSubmit() {
           <div class="grid gap-4 mb-4 grid-cols-2">
             <div class="col-span-2">
               <input
-                type="text"
                 v-model="name"
+                type="text"
                 name="name"
                 id="name"
                 class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
@@ -312,15 +358,14 @@ function answerSubmit() {
 
           <div class="flex justify-end pt-2">
             <button
-              type="submit"
               class="text-white inline-flex items-center bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+              type="submit"
             >
               Any key
             </button>
           </div>
         </form>
       </div>
-
     </Modal>
   </GuestLayout>
 </template>
