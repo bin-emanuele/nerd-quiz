@@ -143,7 +143,7 @@ function bookQuestion () {
 }
 
 const answerText = ref('');
-const answerErrors = ref([]);
+const answerErrors = ref('');
 function answerSubmit () {
   axios.post(route('game-sessions.front.answer', [game_session.slug, currentQuestion.value.id]), { answer: answerText.value })
     .then(({ data }) => {
